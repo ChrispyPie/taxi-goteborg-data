@@ -1,0 +1,129 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f4f6f8;
+  color: #222;
+  line-height: 1.5;
+}
+
+header {
+  background: #1a365d;
+  color: white;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.driver-select {
+  margin-top: 0.5rem;
+}
+
+select {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: none;
+}
+
+main {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+.card h3 {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 0.4rem;
+}
+
+.card .value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #1a365d;
+}
+
+.card .unit {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.section h2 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #1a365d;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+th {
+  background: #f8fafc;
+}
+
+.admin-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.driver-card {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.driver-card:hover {
+  background: #e2e8f0;
+}
+
+@media (max-width: 600px) {
+  header h1 {
+    font-size: 1.2rem;
+  }
+  .card .value {
+    font-size: 1.5rem;
+  }
+}
