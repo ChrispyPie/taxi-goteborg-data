@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-16T16:19:19.332803Z",
+  "last_updated": "2026-10-16T16:20:34.483807Z",
   "forar": "710022",
   "shifts": [
     {
@@ -7,8 +7,8 @@
       "start": "20261015  17:01",
       "slut": "20261016  05:37",
       "tid": "12:36",
-      "passnr": "710022",
-      "resor": "4137"
+      "passnr": "4137",
+      "resor": "7"
     }
   ],
   "trips": [
@@ -187,9 +187,6 @@
       "startdatum": "20261016",
       "starttid": "04:03",
       "sluttid": "04:43"
-    },
-    {
-      "kvittonr": "Kommentar:"
     }
   ]
 }
