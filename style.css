@@ -19,7 +19,7 @@ header h1 { font-size: 1.3rem; }
 }
 .tab {
   padding: 0.5rem 1.4rem;
-  border: 2px solid white;
+  border: 2px solid #1a365d;
   border-radius: 20px;
   background: white;
   color: #1a365d;
@@ -27,7 +27,8 @@ header h1 { font-size: 1.3rem; }
   font-weight: 500;
 }
 .tab.active {
-  border-color: #1a365d;
+  background: #1a365d;
+  color: white;
 }
 
 .date-nav {
@@ -39,7 +40,7 @@ header h1 { font-size: 1.3rem; }
 .date-nav button {
   background: white;
   color: #1a365d;
-  border: 2px solid white;
+  border: 2px solid #1a365d;
   width: 42px;
   height: 42px;
   border-radius: 10px;
@@ -47,12 +48,13 @@ header h1 { font-size: 1.3rem; }
   cursor: pointer;
 }
 .date-nav button.active {
-  border-color: #1a365d;
+  background: #1a365d;
+  color: white;
 }
 #current-date {
   background: white;
   color: #1a365d;
-  border: 2px solid white;
+  border: 2px solid #1a365d;
   padding: 0.6rem 1.4rem;
   border-radius: 10px;
   min-width: 130px;
