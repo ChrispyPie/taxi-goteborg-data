@@ -1,3 +1,5 @@
+const MASTER_PASSWORD = 'taxi2026';
+
 const drivers = {
   "15201": {
     name: "Christian",
@@ -34,6 +36,21 @@ const drivers = {
     ]
   }
 };
+
+function checkPassword() {
+  const input = document.getElementById('password').value;
+  if (input === MASTER_PASSWORD) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    renderDriver('15201');
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+document.getElementById('password').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') checkPassword();
+});
 
 function formatSEK(num) {
   return new Intl.NumberFormat('sv-SE').format(num) + ' kr';
@@ -115,6 +132,3 @@ document.getElementById('driver').addEventListener('change', (e) => {
     renderDriver(val);
   }
 });
-
-// Initial render
-renderDriver('15201');
