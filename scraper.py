@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-STIG scraper – Passrapport (historik) + Resaposter (pågående skift).
+STIG scraper – Passrapport (historik) + Resaposter (pågående).
+Testar med förare 710022.
 """
 
 import os
@@ -22,52 +23,66 @@ def login(page):
     page.wait_for_load_state("networkidle")
     return "Login.aspx" not in page.url
 
-def fetch_passrapport(page, forar_id, days_back=14):
+def fetch_passrapport(page, forar_id):
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
 
-    from_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
-    to_date = datetime.now().strftime("%Y-%m-%d")
-
-    # Fill fields more carefully
-    page.fill("input[type='text']", forar_id)  # first text field is often forar
-    inputs = page.query_selector_all("input[type='text']")
-    if len(inputs) >= 3:
-        inputs[0].fill(forar_id)
-        inputs[1].fill(from_date)
-        inputs[2].fill(to_date)
-
-    page.click("input[type='submit'], button:has-text('Sök'), input[value*='Sök']")
-    page.wait_for_load_state("networkidle")
-
-    rows = page.query_selector_all("table tr")
-    shifts = []
-    for row in rows[1:]:
-        cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-        if len(cells) < 6:
-            continue
-        shifts.append({
-            "raw": cells
-        })
-    return shifts
-
-def fetch_resaposter(page, forar_id, from_date):
-    page.goto(f"{STIG_URL}/Resaposter.aspx")
-    page.wait_for_load_state("networkidle")
-
-    page.fill("#MainContent_tb_Forarid", forar_id)
-    page.fill("#MainContent_tb_ResdatumFom", from_date)
-    page.fill("#MainContent_tb_ResdatumTom", datetime.now().strftime("%Y-%m-%d"))
+    # Fill driver ID and dates
+    page.evaluate(f"""
+        () => {{
+            const inputs = document.querySelectorAll('input[type="text"]');
+            if (inputs.length >= 1) inputs[0].value = '{forar_id}';
+            if (inputs.length >= 2) inputs[1].value = '{(datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")}';
+            if (inputs.length >= 3) inputs[2].value = '{datetime.now().strftime("%Y-%m-%d")}';
+        }}
+    """)
     page.click("input[type='submit'], button:has-text('Sök')")
     page.wait_for_load_state("networkidle")
 
+    shifts = []
     rows = page.query_selector_all("table tr")
-    trips = []
     for row in rows[1:]:
         cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-        if len(cells) < 8:
-            continue
-        trips.append({"raw": cells})
+        if len(cells) >= 8:
+            shifts.append({
+                "taxi": cells[0],
+                "start": cells[1],
+                "slut": cells[2],
+                "forar": cells[6] if len(cells) > 6 else forar_id,
+                "passnr": cells[7] if len(cells) > 7 else "",
+                "resor": cells[8] if len(cells) > 8 else "",
+                "belopp": cells[-1] if cells else ""
+            })
+    return shifts
+
+def fetch_resaposter(page, forar_id):
+    page.goto(f"{STIG_URL}/Resaposter.aspx")
+    page.wait_for_load_state("networkidle")
+
+    from_date = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
+    page.evaluate(f"""
+        () => {{
+            document.getElementById('MainContent_tb_Forarid').value = '{forar_id}';
+            document.getElementById('MainContent_tb_ResdatumFom').value = '{from_date}';
+            document.getElementById('MainContent_tb_ResdatumTom').value = '{datetime.now().strftime("%Y-%m-%d")}';
+        }}
+    """)
+    page.click("input[type='submit'], button:has-text('Sök')")
+    page.wait_for_load_state("networkidle")
+
+    trips = []
+    rows = page.query_selector_all("table tr")
+    for row in rows[1:]:
+        cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
+        if len(cells) >= 10:
+            trips.append({
+                "passnr": cells[3],
+                "kvittonr": cells[4],
+                "belopp": cells[7],
+                "startdatum": cells[8],
+                "starttid": cells[10],
+                "sluttid": cells[11] if len(cells) > 11 else ""
+            })
     return trips
 
 def main():
@@ -88,13 +103,13 @@ def main():
 
         print(f"Hämtar data för {forar_id}...")
         shifts = fetch_passrapport(page, forar_id)
-        trips = fetch_resaposter(page, forar_id, (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d"))
+        trips = fetch_resaposter(page, forar_id)
 
         data = {
             "last_updated": datetime.utcnow().isoformat() + "Z",
             "forar": forar_id,
-            "shifts": shifts[:10],
-            "recent_trips": trips[:15]
+            "shifts": shifts,
+            "trips": trips
         }
 
         with open("data.json", "w", encoding="utf-8") as f:
