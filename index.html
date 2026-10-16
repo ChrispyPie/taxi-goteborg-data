@@ -19,8 +19,22 @@
 
   <div id="app" style="display:none;">
     <header>
-      <h1>Taxi Göteborg – Statistik</h1>
+      <h1>Taxi Göteborg</h1>
     </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="dag">Dag</button>
+      <button class="tab" data-tab="vecka">Vecka</button>
+      <button class="tab" data-tab="manad">Månad</button>
+    </div>
+
+    <div class="date-nav">
+      <button id="prev">‹</button>
+      <div id="current-date">Idag</div>
+      <button id="next">›</button>
+      <button id="today">»</button>
+    </div>
+
     <main id="dashboard"></main>
   </div>
 
