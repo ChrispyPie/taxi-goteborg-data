@@ -3,11 +3,7 @@ let data = {};
 let currentDate = new Date();
 let currentTab = 'dag';
 
-const goals = {
-  dag: 4000,
-  vecka: 25000,
-  manad: 100000
-};
+const goals = { dag: 4000, vecka: 25000, manad: 100000 };
 
 async function loadData() {
   try {
@@ -48,7 +44,16 @@ function isToday(d) {
 }
 
 function formatSEK(n) {
-  return n ? new Intl.NumberFormat('sv-SE').format(n) + ' kr' : '—';
+  return n ? new Intl.NumberFormat('sv-SE').format(Math.round(n)) + ' kr' : '—';
+}
+
+function parseAmount(str) {
+  return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0;
+}
+
+function getTripsForDate(date) {
+  const ymd = date.toISOString().slice(0,10).replace(/-/g, '');
+  return (data.trips || []).filter(t => t.startdatum === ymd);
 }
 
 function render() {
@@ -56,39 +61,26 @@ function render() {
   document.getElementById('current-date').textContent = isTodayNow ? 'Idag' : formatDate(currentDate);
   document.getElementById('today').classList.toggle('active', isTodayNow);
 
-  const inkort = 0; // placeholder until scraper is ready
-  const timmar = 0;
-  const km = 0;
+  const trips = getTripsForDate(currentDate);
+  const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
 
   const html = `
     <div class="section">
-      <div class="stat-row" onclick="this.classList.toggle('open')">
-        <span>Inkört</span><span>${formatSEK(inkort)}</span>
-      </div>
-      <div class="stat-row" onclick="this.classList.toggle('open')">
-        <span>Arbetade timmar</span><span>${timmar || '—'}</span>
-        <div class="detail">Start – Slut</div>
-      </div>
-      <div class="stat-row" onclick="this.classList.toggle('open')">
-        <span>Körda km</span><span>${km || '—'}</span>
-        <div class="detail">Betalda / Lediga</div>
-      </div>
-      <div class="stat-row" onclick="editGoal()">
-        <span>Mål</span><span>${formatSEK(goal)}</span>
-      </div>
-      <div class="stat-row">
-        <span>Diff</span><span>${formatSEK(diff)}</span>
-      </div>
+      <div class="stat-row"><span>Inkört</span><span>${formatSEK(inkort)}</span></div>
+      <div class="stat-row"><span>Arbetade timmar</span><span>—</span></div>
+      <div class="stat-row"><span>Körda km</span><span>—</span></div>
+      <div class="stat-row" onclick="editGoal()"><span>Mål</span><span>${formatSEK(goal)}</span></div>
+      <div class="stat-row"><span>Diff</span><span>${formatSEK(diff)}</span></div>
     </div>
+    ${trips.length ? `<div class="section"><h3 style="padding:0.8rem 1.2rem;">Körningar</h3>${trips.map(t => `<div class="stat-row"><span>${t.starttid}</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>`).join('')}</div>` : ''}
   `;
   document.getElementById('dashboard').innerHTML = html;
 }
 
 function editGoal() {
-  const current = goals[currentTab];
-  const val = prompt('Nytt mål (kr):', current);
+  const val = prompt('Nytt mål (kr):', goals[currentTab]);
   if (val && !isNaN(val)) {
     goals[currentTab] = parseInt(val);
     render();
