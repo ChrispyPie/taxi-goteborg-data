@@ -1,19 +1,9 @@
 {
-  "last_updated": "2026-10-16T14:41:09.870692Z",
+  "last_updated": "2026-10-16T16:25:55.302168Z",
   "forar": "710022",
-  "shifts": [
-    {
-      "taxi": "A191",
-      "start": "20261015 17:01",
-      "slut": "20261016 05:37",
-      "tid": "12:36",
-      "passnr": "4137",
-      "resor": "7"
-    }
-  ],
+  "shifts": [{"start": "20261016 00:00", "slut": "20261016 05:00", "tid": "5:00"}],
   "trips": [
-    {"passnr": "4137", "kvittonr": "030094-01", "belopp": "621,00", "startdatum": "20261015", "starttid": "18:38", "sluttid": "19:04"},
-    {"passnr": "4137", "kvittonr": "030095-01", "belopp": "531,00", "startdatum": "20261015", "starttid": "20:41", "sluttid": "21:01"},
-    {"passnr": "4137", "kvittonr": "030100-01", "belopp": "1473,00", "startdatum": "20261016", "starttid": "04:03", "sluttid": "04:43"}
+    {"kvittonr": "030100-01", "startzon": "438", "slutzon": "298", "kilometer": "52,332", "dricks": "0,00", "kredittyp": "160", "belopp": "1473,00", "starttid": "04:03", "sluttid": "04:43", "startdatum": "20261016"},
+    {"kvittonr": "030099-01", "startzon": "292", "slutzon": "117", "kilometer": "38,327", "dricks": "0,00", "kredittyp": "283", "belopp": "781,00", "starttid": "00:31", "sluttid": "01:02", "startdatum": "20261016"}
   ]
 }
