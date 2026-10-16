@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 STIG scraper – Passrapport (historik) + Resaposter (pågående).
-Testar med förare 710022.
 """
 
 import os
@@ -27,31 +26,35 @@ def fetch_passrapport(page, forar_id):
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
 
-    # Fill driver ID and dates
+    from_date = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    to_date = datetime.now().strftime("%Y-%m-%d")
+
+    # Fill using more specific approach
     page.evaluate(f"""
         () => {{
-            const inputs = document.querySelectorAll('input[type="text"]');
-            if (inputs.length >= 1) inputs[0].value = '{forar_id}';
-            if (inputs.length >= 2) inputs[1].value = '{(datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")}';
-            if (inputs.length >= 3) inputs[2].value = '{datetime.now().strftime("%Y-%m-%d")}';
+            const all = document.querySelectorAll('input[type="text"]');
+            for (const el of all) {{
+                const id = (el.id || '').toLowerCase();
+                const name = (el.name || '').toLowerCase();
+                if (id.includes('forar') || name.includes('forar')) el.value = '{forar_id}';
+                if ((id.includes('start') && id.includes('fom')) || (name.includes('start') && name.includes('fom'))) el.value = '{from_date}';
+                if ((id.includes('start') && id.includes('tom')) || (name.includes('start') && name.includes('tom'))) el.value = '{to_date}';
+            }}
         }}
     """)
-    page.click("input[type='submit'], button:has-text('Sök')")
+
+    # Click search
+    page.click("input[type='submit'], button:has-text('Sök'), input[value*='Sök']")
     page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(2000)
 
     shifts = []
     rows = page.query_selector_all("table tr")
     for row in rows[1:]:
         cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-        if len(cells) >= 8:
+        if len(cells) >= 6 and cells[0]:
             shifts.append({
-                "taxi": cells[0],
-                "start": cells[1],
-                "slut": cells[2],
-                "forar": cells[6] if len(cells) > 6 else forar_id,
-                "passnr": cells[7] if len(cells) > 7 else "",
-                "resor": cells[8] if len(cells) > 8 else "",
-                "belopp": cells[-1] if cells else ""
+                "raw": cells
             })
     return shifts
 
@@ -62,9 +65,12 @@ def fetch_resaposter(page, forar_id):
     from_date = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
     page.evaluate(f"""
         () => {{
-            document.getElementById('MainContent_tb_Forarid').value = '{forar_id}';
-            document.getElementById('MainContent_tb_ResdatumFom').value = '{from_date}';
-            document.getElementById('MainContent_tb_ResdatumTom').value = '{datetime.now().strftime("%Y-%m-%d")}';
+            const forar = document.getElementById('MainContent_tb_Forarid');
+            const fom = document.getElementById('MainContent_tb_ResdatumFom');
+            const tom = document.getElementById('MainContent_tb_ResdatumTom');
+            if (forar) forar.value = '{forar_id}';
+            if (fom) fom.value = '{from_date}';
+            if (tom) tom.value = '{datetime.now().strftime("%Y-%m-%d")}';
         }}
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
@@ -108,8 +114,8 @@ def main():
         data = {
             "last_updated": datetime.utcnow().isoformat() + "Z",
             "forar": forar_id,
-            "shifts": shifts,
-            "trips": trips
+            "shifts": shifts[:20],
+            "trips": trips[:30]
         }
 
         with open("data.json", "w", encoding="utf-8") as f:
