@@ -23,39 +23,35 @@ def login(page):
     return "Login.aspx" not in page.url
 
 def fetch_passrapport(page, forar_id, days_back=14):
-    """Hämta avslutade skift från Passrapport."""
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
 
     from_date = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
     to_date = datetime.now().strftime("%Y-%m-%d")
 
-    page.fill("input[id*='Forar'], input[name*='Forar']", forar_id)
-    page.fill("input[id*='start'][id*='fom'], input[name*='start'][name*='fom']", from_date)
-    page.fill("input[id*='start'][id*='tom'], input[name*='start'][name*='tom']", to_date)
-    page.click("input[type='submit'], button:has-text('Sök')")
+    # Fill fields more carefully
+    page.fill("input[type='text']", forar_id)  # first text field is often forar
+    inputs = page.query_selector_all("input[type='text']")
+    if len(inputs) >= 3:
+        inputs[0].fill(forar_id)
+        inputs[1].fill(from_date)
+        inputs[2].fill(to_date)
+
+    page.click("input[type='submit'], button:has-text('Sök'), input[value*='Sök']")
     page.wait_for_load_state("networkidle")
 
-    # Parse table rows (simplified – adjust selectors as needed)
     rows = page.query_selector_all("table tr")
     shifts = []
     for row in rows[1:]:
         cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-        if len(cells) < 8:
+        if len(cells) < 6:
             continue
         shifts.append({
-            "taxi": cells[0] if cells else "",
-            "start": cells[1] if len(cells) > 1 else "",
-            "slut": cells[2] if len(cells) > 2 else "",
-            "forar": cells[6] if len(cells) > 6 else forar_id,
-            "passnr": cells[7] if len(cells) > 7 else "",
-            "resor": cells[8] if len(cells) > 8 else "",
-            "belopp": cells[-1] if cells else ""
+            "raw": cells
         })
     return shifts
 
 def fetch_resaposter(page, forar_id, from_date):
-    """Hämta enskilda körningar från Resaposter."""
     page.goto(f"{STIG_URL}/Resaposter.aspx")
     page.wait_for_load_state("networkidle")
 
@@ -69,16 +65,9 @@ def fetch_resaposter(page, forar_id, from_date):
     trips = []
     for row in rows[1:]:
         cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-        if len(cells) < 10:
+        if len(cells) < 8:
             continue
-        trips.append({
-            "kvittonr": cells[4] if len(cells) > 4 else "",
-            "belopp": cells[7] if len(cells) > 7 else "",
-            "startdatum": cells[8] if len(cells) > 8 else "",
-            "starttid": cells[10] if len(cells) > 10 else "",
-            "sluttid": cells[11] if len(cells) > 11 else "",
-            "passnr": cells[3] if len(cells) > 3 else ""
-        })
+        trips.append({"raw": cells})
     return trips
 
 def main():
@@ -86,7 +75,7 @@ def main():
         print("STIG_PASSWORD saknas")
         return
 
-    forar_id = "710022"  # testförare
+    forar_id = "710022"
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -104,8 +93,8 @@ def main():
         data = {
             "last_updated": datetime.utcnow().isoformat() + "Z",
             "forar": forar_id,
-            "shifts": shifts,
-            "recent_trips": trips
+            "shifts": shifts[:10],
+            "recent_trips": trips[:15]
         }
 
         with open("data.json", "w", encoding="utf-8") as f:
