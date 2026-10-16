@@ -1,0 +1,36 @@
+name: Scrape STIG data
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # varje timme
+  workflow_dispatch:     # manuell körning
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Run scraper
+        env:
+          STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
+          STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+        run: python scraper.py
+
+      - name: Commit updated data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data.json || true
+          git diff --staged --quiet || git commit -m "Update data from STIG [skip ci]"
+          git push || true
