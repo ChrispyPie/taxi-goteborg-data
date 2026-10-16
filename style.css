@@ -1,15 +1,15 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, -apple-system, sans-serif; background: #ffffff; color: #222; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #e8f1f8; color: #1a365d; }
 
 #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1a365d; }
 .login-box { background: white; padding: 2rem; border-radius: 12px; text-align: center; width: 90%; max-width: 360px; }
 .login-box input, .login-box button { width: 100%; padding: 0.7rem; margin-top: 0.5rem; border-radius: 6px; border: 1px solid #ccc; }
 .login-box button { background: #1a365d; color: white; border: none; }
 
-header { background: #1a365d; color: white; padding: 1.2rem; text-align: center; }
+header { background: #e8f1f8; color: #1a365d; padding: 1.2rem; text-align: center; border-bottom: 1px solid #d0e0ea; }
 header h1 { font-size: 1.3rem; }
 
-.controls { background: white; padding: 1rem; }
+.controls { background: #e8f1f8; padding: 1rem; }
 
 .tabs {
   display: flex;
@@ -19,16 +19,15 @@ header h1 { font-size: 1.3rem; }
 }
 .tab {
   padding: 0.5rem 1.4rem;
-  border: 2px solid #1a365d;
+  border: 2px solid white;
   border-radius: 20px;
-  background: #1a365d;
-  color: white;
+  background: white;
+  color: #1a365d;
   font-size: 0.95rem;
   font-weight: 500;
 }
 .tab.active {
-  background: white;
-  color: #1a365d;
+  border-color: #1a365d;
 }
 
 .date-nav {
@@ -40,7 +39,7 @@ header h1 { font-size: 1.3rem; }
 .date-nav button {
   background: white;
   color: #1a365d;
-  border: 2px solid #1a365d;
+  border: 2px solid white;
   width: 42px;
   height: 42px;
   border-radius: 10px;
@@ -48,13 +47,12 @@ header h1 { font-size: 1.3rem; }
   cursor: pointer;
 }
 .date-nav button.active {
-  background: #1a365d;
-  color: white;
+  border-color: #1a365d;
 }
 #current-date {
   background: white;
   color: #1a365d;
-  border: 2px solid #1a365d;
+  border: 2px solid white;
   padding: 0.6rem 1.4rem;
   border-radius: 10px;
   min-width: 130px;
@@ -63,6 +61,5 @@ header h1 { font-size: 1.3rem; }
 }
 
 main { max-width: 900px; margin: 1rem auto; padding: 0 1rem; }
-.section { background: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; }
+.section { background: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; }
 .section h2 { color: #1a365d; margin-bottom: 0.8rem; font-size: 1.1rem; }
-.card { background: #f8fafc; border-radius: 8px; padding: 1.2rem; text-align: center; color: #718096; }
