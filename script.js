@@ -57,6 +57,10 @@ function getTripsForDate(date) {
   return (data.trips || []).filter(t => (t.startdatum || '').replace(/-/g, '') === ymd);
 }
 
+function sumByType(trips, typeCode) {
+  return trips.filter(t => t.kredittyp === typeCode).reduce((s, t) => s + parseAmount(t.belopp), 0);
+}
+
 function render() {
   const isTodayNow = isToday(currentDate);
   document.getElementById('current-date').textContent = isTodayNow ? 'Idag' : formatDate(currentDate);
@@ -73,6 +77,12 @@ function render() {
   const krPerKorning = antal ? Math.round(inkort / antal) : 0;
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
+
+  const kort = sumByType(trips, '160');
+  const kredit = sumByType(trips, '283');
+  const swish = sumByType(trips, '163');
+  const kontant = sumByType(trips, '1');
+  const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
   const tripList = trips.map(t => `
     <div class="stat-row" onclick="toggle(this)">
@@ -97,10 +107,11 @@ function render() {
       <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
 
       <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Inkört</span><span class="value">${formatSEK(inkort)}</span></div>
-      <div class="sub"><span>Kredit</span><span>—</span></div>
-      <div class="sub"><span>Kontant</span><span>—</span></div>
-      <div class="sub"><span>Swish</span><span>—</span></div>
-      <div class="sub"><span>Dricks</span><span>—</span></div>
+      <div class="sub"><span>Kort</span><span>${formatSEK(kort)}</span></div>
+      <div class="sub"><span>Kredit</span><span>${formatSEK(kredit)}</span></div>
+      <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
+      <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>
+      <div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>
 
       <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value">${formatSEK(goal)}</span></div>
       <div class="stat-row"><span class="toggle"></span><span class="label">Diff</span><span class="value">${formatSEK(diff)}</span></div>
