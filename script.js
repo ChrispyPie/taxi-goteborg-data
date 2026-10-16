@@ -66,24 +66,40 @@ function render() {
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
 
-  const tripRows = trips.map(t => `<div class="sub"><span>${t.starttid}</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>`).join('');
+  const tripList = trips.map(t => `
+    <div class="stat-row" onclick="toggle(this)">
+      <span class="toggle">+</span>
+      <span class="label">${t.kvittonr}</span>
+      <span class="value">${formatSEK(parseAmount(t.belopp))}</span>
+    </div>
+    <div class="sub"><span>Start</span><span>${t.starttid} —</span></div>
+    <div class="sub"><span>Slut</span><span>${t.sluttid} —</span></div>
+    <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
+    <div class="sub"><span>Typ</span><span>—</span></div>
+    <div class="sub"><span>Dricks</span><span>—</span></div>
+  `).join('');
 
   const html = `
     <div class="section">
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span>Arbetade timmar</span><span>—</span></div>
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">—</span></div>
       <div class="sub"><span>Start</span><span>—</span></div>
       <div class="sub"><span>Slut</span><span>—</span></div>
 
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span>Körda km</span><span>—</span></div>
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">—</span></div>
       <div class="sub"><span>Betalda</span><span>—</span></div>
       <div class="sub"><span>Lediga</span><span>—</span></div>
 
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span>Inkört</span><span>${formatSEK(inkort)}</span></div>
-      ${tripRows}
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Inkört</span><span class="value">${formatSEK(inkort)}</span></div>
+      <div class="sub"><span>Kredit</span><span>—</span></div>
+      <div class="sub"><span>Kontant</span><span>—</span></div>
+      <div class="sub"><span>Swish</span><span>—</span></div>
+      <div class="sub"><span>Dricks</span><span>—</span></div>
 
-      <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span>Mål</span><span>${formatSEK(goal)}</span></div>
-      <div class="stat-row"><span class="toggle"></span><span>Diff</span><span>${formatSEK(diff)}</span></div>
+      <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value">${formatSEK(goal)}</span></div>
+      <div class="stat-row"><span class="toggle"></span><span class="label">Diff</span><span class="value">${formatSEK(diff)}</span></div>
     </div>
+
+    ${trips.length ? `<div class="section">${tripList}</div>` : ''}
   `;
   document.getElementById('dashboard').innerHTML = html;
 }
@@ -91,7 +107,7 @@ function render() {
 function toggle(el) {
   el.classList.toggle('open');
   const icon = el.querySelector('.toggle');
-  icon.textContent = el.classList.contains('open') ? '−' : '+';
+  if (icon) icon.textContent = el.classList.contains('open') ? '−' : '+';
 }
 
 function editGoal() {
