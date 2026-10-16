@@ -21,14 +21,14 @@ header h1 { font-size: 1.3rem; }
   padding: 0.5rem 1.4rem;
   border: 2px solid #1a365d;
   border-radius: 20px;
-  background: white;
-  color: #1a365d;
+  background: #1a365d;
+  color: white;
   font-size: 0.95rem;
   font-weight: 500;
 }
 .tab.active {
-  background: #1a365d;
-  color: white;
+  background: white;
+  color: #1a365d;
 }
 
 .date-nav {
