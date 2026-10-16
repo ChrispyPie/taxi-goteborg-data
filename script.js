@@ -107,9 +107,16 @@ function render() {
 }
 
 function toggle(el) {
-  el.classList.toggle('open');
+  const isOpen = el.classList.toggle('open');
   const icon = el.querySelector('.toggle');
-  if (icon) icon.textContent = el.classList.contains('open') ? '−' : '+';
+  if (icon) icon.textContent = isOpen ? '−' : '+';
+
+  // Show/hide only the immediate following .sub elements
+  let next = el.nextElementSibling;
+  while (next && next.classList.contains('sub')) {
+    next.classList.toggle('visible', isOpen);
+    next = next.nextElementSibling;
+  }
 }
 
 function editGoal() {
