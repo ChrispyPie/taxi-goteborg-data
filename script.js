@@ -62,6 +62,11 @@ function render() {
   document.getElementById('current-date').textContent = isTodayNow ? 'Idag' : formatDate(currentDate);
   document.getElementById('today').classList.toggle('active', isTodayNow);
 
+  if (data.last_updated) {
+    const d = new Date(data.last_updated);
+    document.getElementById('last-updated').textContent = 'Senast uppdaterad ' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  }
+
   const trips = getTripsForDate(currentDate);
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
