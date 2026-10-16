@@ -1,192 +1,30 @@
 {
-  "last_updated": "2026-10-16T16:23:54.251126Z",
+  "last_updated": "2026-10-16T16:25:55.302168Z",
   "forar": "710022",
-  "shifts": [
-    {
-      "taxi": "A191",
-      "start": "20261015  17:01",
-      "slut": "20261016  05:37",
-      "tid": "12:36",
-      "passnr": "4137",
-      "resor": "7"
-    }
-  ],
   "trips": [
     {
-      "passnr": "4131",
-      "kvittonr": "030055-01",
-      "belopp": "611,00",
-      "startdatum": "20261013",
-      "starttid": "00:21",
-      "sluttid": "00:40"
-    },
-    {
-      "passnr": "4131",
-      "kvittonr": "030056-01",
-      "belopp": "226,00",
-      "startdatum": "20261013",
-      "starttid": "01:53",
-      "sluttid": "01:54"
-    },
-    {
-      "passnr": "4131",
-      "kvittonr": "030057-01",
-      "belopp": "672,00",
-      "startdatum": "20261013",
-      "starttid": "03:26",
-      "sluttid": "03:59"
-    },
-    {
-      "passnr": "4131",
-      "kvittonr": "030058-01",
-      "belopp": "294,00",
-      "startdatum": "20261013",
-      "starttid": "04:28",
-      "sluttid": "04:37"
-    },
-    {
-      "passnr": "4131",
-      "kvittonr": "030059-01",
-      "belopp": "219,00",
-      "startdatum": "20261013",
-      "starttid": "04:47",
-      "sluttid": "04:57"
-    },
-    {
-      "passnr": "4133",
-      "kvittonr": "030066-01",
-      "belopp": "600,00",
-      "startdatum": "20261013",
-      "starttid": "23:12",
-      "sluttid": "23:30"
-    },
-    {
-      "passnr": "4133",
-      "kvittonr": "030067-01",
-      "belopp": "781,00",
-      "startdatum": "20261014",
-      "starttid": "00:15",
-      "sluttid": "00:43"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030076-01",
-      "belopp": "810,00",
-      "startdatum": "20261014",
-      "starttid": "17:48",
-      "sluttid": "18:13"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030077-01",
-      "belopp": "591,00",
-      "startdatum": "20261014",
-      "starttid": "19:12",
-      "sluttid": "19:27"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030078-01",
-      "belopp": "849,00",
-      "startdatum": "20261014",
-      "starttid": "21:38",
-      "sluttid": "22:16"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030079-01",
-      "belopp": "761,00",
-      "startdatum": "20261014",
-      "starttid": "23:56",
-      "sluttid": "00:18"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030080-01",
-      "belopp": "136,00",
-      "startdatum": "20261015",
-      "starttid": "01:45",
-      "sluttid": "01:50"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030081-01",
-      "belopp": "103,00",
-      "startdatum": "20261015",
-      "starttid": "01:51",
-      "sluttid": "01:55"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030082-01",
-      "belopp": "652,00",
-      "startdatum": "20261015",
-      "starttid": "03:30",
-      "sluttid": "04:02"
-    },
-    {
-      "passnr": "4135",
-      "kvittonr": "030083-01",
-      "belopp": "234,00",
-      "startdatum": "20261015",
-      "starttid": "04:43",
-      "sluttid": "04:43"
-    },
-    {
-      "passnr": "4137",
-      "kvittonr": "030094-01",
-      "belopp": "621,00",
-      "startdatum": "20261015",
-      "starttid": "18:38",
-      "sluttid": "19:04"
-    },
-    {
-      "passnr": "4137",
-      "kvittonr": "030095-01",
-      "belopp": "531,00",
-      "startdatum": "20261015",
-      "starttid": "20:41",
-      "sluttid": "21:01"
-    },
-    {
-      "passnr": "4137",
-      "kvittonr": "030096-01",
-      "belopp": "657,00",
-      "startdatum": "20261015",
-      "starttid": "22:51",
-      "sluttid": "22:52"
-    },
-    {
-      "passnr": "4137",
-      "kvittonr": "030097-01",
-      "belopp": "556,00",
-      "startdatum": "20261015",
-      "starttid": "22:53",
-      "sluttid": "23:11"
-    },
-    {
-      "passnr": "4137",
-      "kvittonr": "030098-01",
-      "belopp": "611,00",
-      "startdatum": "20261015",
-      "starttid": "23:36",
-      "sluttid": "23:58"
-    },
-    {
-      "passnr": "4137",
-      "kvittonr": "030099-01",
-      "belopp": "781,00",
-      "startdatum": "20261016",
-      "starttid": "00:31",
-      "sluttid": "01:02"
-    },
-    {
-      "passnr": "4137",
       "kvittonr": "030100-01",
+      "startzon": "438",
+      "slutzon": "298",
+      "kilometer": "52,332",
+      "dricks": "0,00",
+      "kredittyp": "160",
       "belopp": "1473,00",
-      "startdatum": "20261016",
       "starttid": "04:03",
-      "sluttid": "04:43"
+      "sluttid": "04:43",
+      "startdatum": "2026-10-16"
+    },
+    {
+      "kvittonr": "030099-01",
+      "startzon": "292",
+      "slutzon": "117",
+      "kilometer": "38,327",
+      "dricks": "0,00",
+      "kredittyp": "283",
+      "belopp": "781,00",
+      "starttid": "00:31",
+      "sluttid": "01:02",
+      "startdatum": "2026-10-16"
     }
   ]
 }
