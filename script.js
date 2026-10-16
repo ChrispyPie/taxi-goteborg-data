@@ -30,40 +30,22 @@ function formatSEK(num) {
   return new Intl.NumberFormat('sv-SE').format(Math.round(num || 0)) + ' kr';
 }
 
-function parseAmount(str) {
-  if (!str) return 0;
-  return parseFloat(str.replace(/\s/g, '').replace(',', '.')) || 0;
-}
-
 function render() {
-  const trips = data.recent_trips || [];
-  if (trips.length === 0) {
-    document.getElementById('dashboard').innerHTML = '<p>Inga körningar ännu.</p>';
-    return;
-  }
-
-  let total = 0;
-  const rows = trips.map(t => {
-    const c = t.raw || [];
-    const belopp = parseAmount(c[7] || c[6]);
-    total += belopp;
-    const datum = c[8] || '';
-    const tid = c[10] || '';
-    const kvitto = c[4] || '';
-    return `<tr><td>${datum} ${tid}</td><td>${kvitto}</td><td>${formatSEK(belopp)}</td></tr>`;
-  }).join('');
-
+  // För tillfället: visa tom vy eftersom vi inte har nya resaposter efter senaste skift
   const html = `
     <div class="section">
-      <h2>Pågående / senaste skift</h2>
-      <div class="card" style="margin-bottom:1rem;">
-        <h3>Inkört</h3>
-        <div class="value">${formatSEK(total)}</div>
+      <h2>Pågående skift</h2>
+      <div class="card">
+        <p style="text-align:center; color:#718096; padding:2rem 0;">
+          Inget pågående skift.<br>
+          Tryck på Uppdatera när du har kört nya resor.
+        </p>
       </div>
-      <table>
-        <thead><tr><th>Tid</th><th>Kvitto</th><th>Belopp</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+    </div>
+
+    <div class="section">
+      <h2>Historik</h2>
+      <p style="color:#718096;">Avslutade skift visas här när Passrapport är inkopplad.</p>
     </div>
   `;
   document.getElementById('dashboard').innerHTML = html;
