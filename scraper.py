@@ -43,13 +43,25 @@ def main():
         page.goto(f"{STIG_URL}/MedlemsRapporter.aspx")
         page.wait_for_load_state("networkidle")
 
-        # Här kan man lägga till logik för att klicka på nedladdningsknappar
-        # och spara filerna. Just nu sparar vi bara en status.
+        # Ladda ner första pass-filen som exempel
+        sample_content = ""
+        try:
+            with page.expect_download() as download_info:
+                # Klicka på nedladdningsknappen för pass-filen (tredje knappen ungefär)
+                page.click("input[type='image'] >> nth=2")
+            download = download_info.value
+            path = download.path()
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                sample_content = f.read()[:2000]  # första 2000 tecken
+            print("Nedladdning lyckades")
+        except Exception as e:
+            print(f"Nedladdning misslyckades: {e}")
+            sample_content = "Kunde inte ladda ner fil"
 
         data = {
             "last_updated": datetime.utcnow().isoformat() + "Z",
             "status": "scraper körd",
-            "note": "Parsing av filer kommer i nästa steg när vi sett formatet",
+            "sample_file_preview": sample_content,
             "drivers": {}
         }
 
