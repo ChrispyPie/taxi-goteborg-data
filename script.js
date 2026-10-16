@@ -27,7 +27,6 @@ function checkPassword() {
   }
 }
 
-// Check on page load
 if (localStorage.getItem('taxi_logged_in') === '1') {
   showApp();
 }
@@ -45,11 +44,14 @@ function isToday(d) {
 }
 
 function render() {
-  document.getElementById('current-date').textContent = isToday(currentDate) ? 'Idag' : formatDate(currentDate);
+  const todayBtn = document.getElementById('today');
+  const isTodayNow = isToday(currentDate);
+  document.getElementById('current-date').textContent = isTodayNow ? 'Idag' : formatDate(currentDate);
+  todayBtn.classList.toggle('active', isTodayNow);
 
   let html = '';
   if (currentTab === 'dag') {
-    if (isToday(currentDate)) {
+    if (isTodayNow) {
       html = `
         <div class="section">
           <h2>Pågående skift</h2>
