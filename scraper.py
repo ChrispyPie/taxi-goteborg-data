@@ -58,19 +58,20 @@ def scrape_trip_detail(page, kvitto):
 
         detail = page.evaluate("""
             () => {
-                const text = document.body.innerText;
-                const get = (label) => {
-                    const idx = text.indexOf(label);
-                    if (idx === -1) return '';
-                    const after = text.substring(idx + label.length, idx + label.length + 40);
-                    return after.split('\\n')[0].replace(':', '').trim();
+                const get = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? el.value : '';
                 };
                 return {
-                    startzon: get('Startzon'),
-                    slutzon: get('Slutzon'),
-                    kilometer: get('Kilometer'),
-                    dricks: get('Dricks'),
-                    kredittyp: get('Kredittyp')
+                    startzon: get('MainContent_tb_valdresa_Startzon'),
+                    slutzon: get('MainContent_tb_valdresa_Slutzon'),
+                    kilometer: get('MainContent_tb_valdresa_Kilometer2'),
+                    dricks: get('MainContent_tb_valdresa_Dricks'),
+                    kredittyp: get('MainContent_ddl_valdresa_Kredittyp'),
+                    belopp: get('MainContent_tb_valdresa_Taxameterbelopp'),
+                    starttid: get('MainContent_tb_valdresa_Starttid'),
+                    sluttid: get('MainContent_tb_valdresa_Sluttid'),
+                    startdatum: get('MainContent_tb_valdresa_Startdatum')
                 };
             }
         """)
