@@ -52,22 +52,12 @@ function render() {
   let html = '';
   if (currentTab === 'dag') {
     if (isTodayNow) {
-      html = `
-        <div class="section">
-          <h2>Pågående skift</h2>
-          <div class="card"><p style="padding:1.5rem 0;">Inget pågående skift</p></div>
-        </div>
-      `;
+      html = `<div class="section"><h2>Pågående skift</h2></div>`;
     } else {
-      html = `
-        <div class="section">
-          <h2>Skift ${formatDate(currentDate)}</h2>
-          <div class="card"><p>Data från Passrapport visas här</p></div>
-        </div>
-      `;
+      html = `<div class="section"><h2>Skift ${formatDate(currentDate)}</h2></div>`;
     }
   } else {
-    html = `<div class="section"><h2>${currentTab === 'vecka' ? 'Vecka' : 'Månad'}</h2><p>Kommer snart</p></div>`;
+    html = `<div class="section"><h2>${currentTab === 'vecka' ? 'Vecka' : 'Månad'}</h2></div>`;
   }
   document.getElementById('dashboard').innerHTML = html;
 }
