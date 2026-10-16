@@ -11,7 +11,7 @@
     <div class="login-box">
       <h2>Taxi Göteborg Data</h2>
       <p>Ange masterlösenord</p>
-      <input type="password" id="password" placeholder="Lösenord">
+      <input type="password" id="password" placeholder="Lösenord" autofocus>
       <button onclick="checkPassword()">Logga in</button>
       <p id="login-error" style="color:#c53030; display:none;">Fel lösenord</p>
     </div>
@@ -19,21 +19,14 @@
 
   <div id="app" style="display:none;">
     <header>
-      <h1>Taxi Göteborg – Min statistik</h1>
+      <h1>Taxi Göteborg – Statistik</h1>
       <div class="driver-select">
-        <label for="driver">Välj chaufför (demo):</label>
-        <select id="driver">
-          <option value="15201">15201 – Christian</option>
-          <option value="15202">15202 – Erik</option>
-          <option value="15203">15203 – Anna</option>
-          <option value="admin">Admin (översikt)</option>
-        </select>
+        <label for="driver">Förare:</label>
+        <select id="driver"></select>
       </div>
     </header>
 
-    <main id="dashboard">
-      <!-- Content filled by script.js -->
-    </main>
+    <main id="dashboard"></main>
   </div>
 
   <script src="script.js"></script>
