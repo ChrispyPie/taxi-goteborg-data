@@ -12,14 +12,24 @@ async function loadData() {
   }
 }
 
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadData().then(render);
+}
+
 function checkPassword() {
   if (document.getElementById('password').value === MASTER_PASSWORD) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    loadData().then(render);
+    localStorage.setItem('taxi_logged_in', '1');
+    showApp();
   } else {
     document.getElementById('login-error').style.display = 'block';
   }
+}
+
+// Check on page load
+if (localStorage.getItem('taxi_logged_in') === '1') {
+  showApp();
 }
 
 document.getElementById('password').addEventListener('keypress', e => {
@@ -31,8 +41,7 @@ function formatDate(d) {
 }
 
 function isToday(d) {
-  const t = new Date();
-  return d.toDateString() === t.toDateString();
+  return d.toDateString() === new Date().toDateString();
 }
 
 function render() {
@@ -44,25 +53,20 @@ function render() {
       html = `
         <div class="section">
           <h2>Pågående skift</h2>
-          <div class="card">
-            <p style="color:#718096; padding:1.5rem 0;">Inget pågående skift</p>
-          </div>
+          <div class="card"><p style="padding:1.5rem 0;">Inget pågående skift</p></div>
         </div>
       `;
     } else {
       html = `
         <div class="section">
           <h2>Skift ${formatDate(currentDate)}</h2>
-          <div class="card">
-            <p style="color:#718096;">Data från Passrapport visas här</p>
-          </div>
+          <div class="card"><p>Data från Passrapport visas här</p></div>
         </div>
       `;
     }
   } else {
-    html = `<div class="section"><h2>${currentTab === 'vecka' ? 'Vecka' : 'Månad'}</h2><p style="color:#718096;">Kommer snart</p></div>`;
+    html = `<div class="section"><h2>${currentTab === 'vecka' ? 'Vecka' : 'Månad'}</h2><p>Kommer snart</p></div>`;
   }
-
   document.getElementById('dashboard').innerHTML = html;
 }
 
@@ -75,15 +79,6 @@ document.querySelectorAll('.tab').forEach(btn => {
   });
 });
 
-document.getElementById('prev').onclick = () => {
-  currentDate.setDate(currentDate.getDate() - 1);
-  render();
-};
-document.getElementById('next').onclick = () => {
-  currentDate.setDate(currentDate.getDate() + 1);
-  render();
-};
-document.getElementById('today').onclick = () => {
-  currentDate = new Date();
-  render();
-};
+document.getElementById('prev').onclick = () => { currentDate.setDate(currentDate.getDate() - 1); render(); };
+document.getElementById('next').onclick = () => { currentDate.setDate(currentDate.getDate() + 1); render(); };
+document.getElementById('today').onclick = () => { currentDate = new Date(); render(); };
