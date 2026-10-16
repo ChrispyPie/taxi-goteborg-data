@@ -11,6 +11,54 @@ body {
   line-height: 1.5;
 }
 
+#login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #1a365d;
+}
+
+.login-box {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  width: 90%;
+  max-width: 360px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.login-box h2 {
+  margin-bottom: 0.5rem;
+  color: #1a365d;
+}
+
+.login-box p {
+  margin-bottom: 1.2rem;
+  color: #555;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 0.7rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 0.7rem;
+  background: #1a365d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
 header {
   background: #1a365d;
   color: white;
