@@ -1,19 +1,19 @@
 const MASTER_PASSWORD = 'taxi2026';
 let data = {};
+let currentDate = new Date();
+let currentTab = 'dag';
 
 async function loadData() {
   try {
     const res = await fetch('data.json?t=' + Date.now());
     data = await res.json();
   } catch (e) {
-    console.error(e);
     data = {};
   }
 }
 
 function checkPassword() {
-  const input = document.getElementById('password').value;
-  if (input === MASTER_PASSWORD) {
+  if (document.getElementById('password').value === MASTER_PASSWORD) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     loadData().then(render);
@@ -22,31 +22,68 @@ function checkPassword() {
   }
 }
 
-document.getElementById('password').addEventListener('keypress', (e) => {
+document.getElementById('password').addEventListener('keypress', e => {
   if (e.key === 'Enter') checkPassword();
 });
 
-function formatSEK(num) {
-  return new Intl.NumberFormat('sv-SE').format(Math.round(num || 0)) + ' kr';
+function formatDate(d) {
+  return d.toLocaleDateString('sv-SE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function isToday(d) {
+  const t = new Date();
+  return d.toDateString() === t.toDateString();
 }
 
 function render() {
-  // För tillfället: visa tom vy eftersom vi inte har nya resaposter efter senaste skift
-  const html = `
-    <div class="section">
-      <h2>Pågående skift</h2>
-      <div class="card">
-        <p style="text-align:center; color:#718096; padding:2rem 0;">
-          Inget pågående skift.<br>
-          Tryck på Uppdatera när du har kört nya resor.
-        </p>
-      </div>
-    </div>
+  document.getElementById('current-date').textContent = isToday(currentDate) ? 'Idag' : formatDate(currentDate);
 
-    <div class="section">
-      <h2>Historik</h2>
-      <p style="color:#718096;">Avslutade skift visas här när Passrapport är inkopplad.</p>
-    </div>
-  `;
+  let html = '';
+  if (currentTab === 'dag') {
+    if (isToday(currentDate)) {
+      html = `
+        <div class="section">
+          <h2>Pågående skift</h2>
+          <div class="card">
+            <p style="color:#718096; padding:1.5rem 0;">Inget pågående skift</p>
+          </div>
+        </div>
+      `;
+    } else {
+      html = `
+        <div class="section">
+          <h2>Skift ${formatDate(currentDate)}</h2>
+          <div class="card">
+            <p style="color:#718096;">Data från Passrapport visas här</p>
+          </div>
+        </div>
+      `;
+    }
+  } else {
+    html = `<div class="section"><h2>${currentTab === 'vecka' ? 'Vecka' : 'Månad'}</h2><p style="color:#718096;">Kommer snart</p></div>`;
+  }
+
   document.getElementById('dashboard').innerHTML = html;
 }
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    render();
+  });
+});
+
+document.getElementById('prev').onclick = () => {
+  currentDate.setDate(currentDate.getDate() - 1);
+  render();
+};
+document.getElementById('next').onclick = () => {
+  currentDate.setDate(currentDate.getDate() + 1);
+  render();
+};
+document.getElementById('today').onclick = () => {
+  currentDate = new Date();
+  render();
+};
