@@ -1,27 +1,14 @@
 const MASTER_PASSWORD = 'taxi2026';
-let drivers = {};
+let data = {};
 
 async function loadData() {
   try {
     const res = await fetch('data.json?t=' + Date.now());
-    const data = await res.json();
-    drivers = data.drivers || {};
-    populateDriverSelect();
+    data = await res.json();
   } catch (e) {
     console.error(e);
-    drivers = {};
+    data = {};
   }
-}
-
-function populateDriverSelect() {
-  const select = document.getElementById('driver');
-  select.innerHTML = '<option value="admin">Admin (översikt)</option>';
-  Object.keys(drivers).sort().forEach(id => {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = id;
-    select.appendChild(opt);
-  });
 }
 
 function checkPassword() {
@@ -29,13 +16,7 @@ function checkPassword() {
   if (input === MASTER_PASSWORD) {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
-    loadData().then(() => {
-      const first = Object.keys(drivers)[0];
-      if (first) {
-        document.getElementById('driver').value = first;
-        renderDriver(first);
-      }
-    });
+    loadData().then(render);
   } else {
     document.getElementById('login-error').style.display = 'block';
   }
@@ -49,54 +30,41 @@ function formatSEK(num) {
   return new Intl.NumberFormat('sv-SE').format(Math.round(num || 0)) + ' kr';
 }
 
-function renderDriver(driverId) {
-  const d = drivers[driverId];
-  if (!d) return;
+function parseAmount(str) {
+  if (!str) return 0;
+  return parseFloat(str.replace(/\s/g, '').replace(',', '.')) || 0;
+}
+
+function render() {
+  const trips = data.recent_trips || [];
+  if (trips.length === 0) {
+    document.getElementById('dashboard').innerHTML = '<p>Inga körningar ännu.</p>';
+    return;
+  }
+
+  let total = 0;
+  const rows = trips.map(t => {
+    const c = t.raw || [];
+    const belopp = parseAmount(c[7] || c[6]);
+    total += belopp;
+    const datum = c[8] || '';
+    const tid = c[10] || '';
+    const kvitto = c[4] || '';
+    return `<tr><td>${datum} ${tid}</td><td>${kvitto}</td><td>${formatSEK(belopp)}</td></tr>`;
+  }).join('');
 
   const html = `
-    <div class="stats-grid">
-      <div class="card"><h3>Inkört</h3><div class="value">${formatSEK(d.inkort)}</div></div>
-      <div class="card"><h3>Per timme</h3><div class="value">${d.perTimme || 0}</div><div class="unit">kr/h</div></div>
-      <div class="card"><h3>Per mil</h3><div class="value">${d.perMil || 0}</div><div class="unit">kr/mil</div></div>
-      <div class="card"><h3>Timmar</h3><div class="value">${d.timmar || 0}</div><div class="unit">h</div></div>
-    </div>
-
     <div class="section">
-      <h2>Senaste pass</h2>
+      <h2>Pågående / senaste skift</h2>
+      <div class="card" style="margin-bottom:1rem;">
+        <h3>Inkört</h3>
+        <div class="value">${formatSEK(total)}</div>
+      </div>
       <table>
-        <thead><tr><th>Start</th><th>Slut</th><th>Timmar</th><th>Belopp</th></tr></thead>
-        <tbody>
-          ${(d.senastePass || []).map(p => `
-            <tr>
-              <td>${p.start || '-'}</td>
-              <td>${p.slut || '-'}</td>
-              <td>${p.timmar || 0}</td>
-              <td>${formatSEK(p.belopp)}</td>
-            </tr>`).join('')}
-        </tbody>
+        <thead><tr><th>Tid</th><th>Kvitto</th><th>Belopp</th></tr></thead>
+        <tbody>${rows}</tbody>
       </table>
     </div>
   `;
   document.getElementById('dashboard').innerHTML = html;
 }
-
-function renderAdmin() {
-  const html = `
-    <div class="section">
-      <h2>Översikt</h2>
-      <div class="admin-overview">
-        ${Object.entries(drivers).map(([id, d]) => `
-          <div class="driver-card" onclick="document.getElementById('driver').value='${id}'; renderDriver('${id}')">
-            <strong>${id}</strong><br>
-            ${formatSEK(d.inkort)} – ${d.timmar || 0} h
-          </div>`).join('')}
-      </div>
-    </div>
-  `;
-  document.getElementById('dashboard').innerHTML = html;
-}
-
-document.getElementById('driver').addEventListener('change', (e) => {
-  if (e.target.value === 'admin') renderAdmin();
-  else renderDriver(e.target.value);
-});
