@@ -1,11 +1,17 @@
 {
-  "last_updated": "2026-10-16T12:39:13.955726Z",
+  "last_updated": "2026-10-16T14:41:09.870692Z",
   "forar": "710022",
-  "shifts": [],
+  "shifts": [
+    {
+      "taxi": "A191",
+      "start": "20261015 17:01",
+      "slut": "20261016 05:37",
+      "tid": "12:36",
+      "passnr": "4137",
+      "resor": "7"
+    }
+  ],
   "trips": [
-    {"passnr": "4135", "kvittonr": "030076-01", "belopp": "810,00", "startdatum": "20261014", "starttid": "17:48", "sluttid": "18:13"},
-    {"passnr": "4135", "kvittonr": "030077-01", "belopp": "591,00", "startdatum": "20261014", "starttid": "19:12", "sluttid": "19:27"},
-    {"passnr": "4135", "kvittonr": "030078-01", "belopp": "849,00", "startdatum": "20261014", "starttid": "21:38", "sluttid": "22:16"},
     {"passnr": "4137", "kvittonr": "030094-01", "belopp": "621,00", "startdatum": "20261015", "starttid": "18:38", "sluttid": "19:04"},
     {"passnr": "4137", "kvittonr": "030095-01", "belopp": "531,00", "startdatum": "20261015", "starttid": "20:41", "sluttid": "21:01"},
     {"passnr": "4137", "kvittonr": "030100-01", "belopp": "1473,00", "startdatum": "20261016", "starttid": "04:03", "sluttid": "04:43"}
