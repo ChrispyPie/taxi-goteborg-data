@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Taxi Göteborg – Kördata</title>
+  <title>TaxiData</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="login-screen">
     <div class="login-box">
-      <h2>Taxi Göteborg Data</h2>
+      <h2>TaxiData</h2>
       <p>Ange masterlösenord</p>
       <input type="password" id="password" placeholder="Lösenord" autofocus>
       <button onclick="checkPassword()">Logga in</button>
@@ -19,20 +19,22 @@
 
   <div id="app" style="display:none;">
     <header>
-      <h1>Taxi Göteborg</h1>
+      <h1>TaxiData</h1>
     </header>
 
-    <div class="tabs">
-      <button class="tab active" data-tab="dag">Dag</button>
-      <button class="tab" data-tab="vecka">Vecka</button>
-      <button class="tab" data-tab="manad">Månad</button>
-    </div>
+    <div class="controls">
+      <div class="tabs">
+        <button class="tab active" data-tab="dag">Dag</button>
+        <button class="tab" data-tab="vecka">Vecka</button>
+        <button class="tab" data-tab="manad">Månad</button>
+      </div>
 
-    <div class="date-nav">
-      <button id="prev">‹</button>
-      <div id="current-date">Idag</div>
-      <button id="next">›</button>
-      <button id="today">»</button>
+      <div class="date-nav">
+        <button id="prev">‹</button>
+        <div id="current-date">Idag</div>
+        <button id="next">›</button>
+        <button id="today">»</button>
+      </div>
     </div>
 
     <main id="dashboard"></main>
