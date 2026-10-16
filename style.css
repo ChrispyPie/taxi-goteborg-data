@@ -46,15 +46,27 @@ header h1 { font-size: 1.3rem; }
 }
 
 main { max-width: 900px; margin: 1rem auto; padding: 0 1rem; }
-.section { background: white; border-radius: 12px; padding: 0.5rem 0; }
+.section { background: white; border-radius: 12px; padding: 0.4rem 0; }
 
 .stat-row {
   display: flex;
   justify-content: space-between;
-  padding: 0.9rem 1.2rem;
-  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+  padding: 0.85rem 1.2rem;
   cursor: pointer;
+  font-weight: 600;
 }
-.stat-row:last-child { border-bottom: none; }
-.stat-row .detail { display: none; width: 100%; font-size: 0.85rem; color: #4a5568; padding-top: 0.4rem; }
-.stat-row.open .detail { display: block; }
+.stat-row .toggle {
+  margin-right: 0.6rem;
+  font-weight: 400;
+  width: 1rem;
+  text-align: center;
+}
+.sub {
+  display: none;
+  padding: 0.3rem 1.2rem 0.3rem 2.8rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #4a5568;
+}
+.open + .sub, .open ~ .sub { display: flex; justify-content: space-between; }
