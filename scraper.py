@@ -27,11 +27,14 @@ def main():
         page.goto(f"{STIG_URL}/Login.aspx")
         page.wait_for_load_state("networkidle")
 
-        # Välj bolag
+        # Välj bolag (Taxi Göteborg)
         page.select_option("select", label="Taxi Göteborg")
-        page.fill("input[name*='Username'], input[id*='Username']", USERNAME)
+
+        # Fyll i användarnamn och lösenord med mer generella selectors
+        page.fill("input[type='text']", USERNAME)
         page.fill("input[type='password']", PASSWORD)
-        page.click("input[type='submit'], button:has-text('Logga in')")
+
+        page.click("input[type='submit'], button, input[value*='Logga']")
         page.wait_for_load_state("networkidle")
 
         if "Login.aspx" in page.url:
@@ -43,20 +46,19 @@ def main():
         page.goto(f"{STIG_URL}/MedlemsRapporter.aspx")
         page.wait_for_load_state("networkidle")
 
-        # Ladda ner första pass-filen som exempel
+        # Ladda ner en fil som exempel
         sample_content = ""
         try:
-            with page.expect_download() as download_info:
-                # Klicka på nedladdningsknappen för pass-filen (tredje knappen ungefär)
+            with page.expect_download(timeout=60000) as download_info:
                 page.click("input[type='image'] >> nth=2")
             download = download_info.value
             path = download.path()
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                sample_content = f.read()[:2000]  # första 2000 tecken
+                sample_content = f.read()[:3000]
             print("Nedladdning lyckades")
         except Exception as e:
             print(f"Nedladdning misslyckades: {e}")
-            sample_content = "Kunde inte ladda ner fil"
+            sample_content = f"Kunde inte ladda ner fil: {e}"
 
         data = {
             "last_updated": datetime.utcnow().isoformat() + "Z",
