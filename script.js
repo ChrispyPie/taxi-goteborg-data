@@ -4,7 +4,7 @@ let currentDate = new Date();
 let currentTab = 'dag';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
-const typeMap = { '160': 'Kort', '283': 'Företag', '163': 'Swish', '1': 'Kontant', '164': 'Uber' };
+const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber' };
 
 async function loadData() {
   try {
@@ -111,7 +111,6 @@ function toggle(el) {
   const icon = el.querySelector('.toggle');
   if (icon) icon.textContent = isOpen ? '−' : '+';
 
-  // Show/hide only the immediate following .sub elements
   let next = el.nextElementSibling;
   while (next && next.classList.contains('sub')) {
     next.classList.toggle('visible', isOpen);
