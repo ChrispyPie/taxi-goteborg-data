@@ -69,6 +69,8 @@ function render() {
   const trips = getTripsForDate(currentDate);
   const shift = getShiftForDate(currentDate);
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
+  const antal = trips.length;
+  const krPerKorning = antal ? Math.round(inkort / antal) : 0;
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
 
@@ -95,9 +97,8 @@ function render() {
       <div class="sub"><span>Start</span><span>${startTid}</span></div>
       <div class="sub"><span>Slut</span><span>${slutTid}</span></div>
 
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">—</span></div>
-      <div class="sub"><span>Betalda</span><span>—</span></div>
-      <div class="sub"><span>Lediga</span><span>—</span></div>
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal || '—'}</span></div>
+      <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
 
       <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Inkört</span><span class="value">${formatSEK(inkort)}</span></div>
       <div class="sub"><span>Kredit</span><span>—</span></div>
