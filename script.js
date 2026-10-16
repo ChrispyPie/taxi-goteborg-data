@@ -4,6 +4,7 @@ let currentDate = new Date();
 let currentTab = 'dag';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
+const typeMap = { '160': 'EMV', '283': 'Företag', '163': 'Swish', '1': 'Kontant', '164': 'Uber' };
 
 async function loadData() {
   try {
@@ -53,12 +54,7 @@ function parseAmount(str) {
 
 function getTripsForDate(date) {
   const ymd = date.toISOString().slice(0,10).replace(/-/g, '');
-  return (data.trips || []).filter(t => t.startdatum === ymd);
-}
-
-function getShiftForDate(date) {
-  const ymd = date.toISOString().slice(0,10).replace(/-/g, '');
-  return (data.shifts || []).find(s => (s.start || '').startsWith(ymd)) || null;
+  return (data.trips || []).filter(t => (t.startdatum || '').replace(/-/g, '') === ymd);
 }
 
 function render() {
@@ -67,16 +63,11 @@ function render() {
   document.getElementById('today').classList.toggle('active', isTodayNow);
 
   const trips = getTripsForDate(currentDate);
-  const shift = getShiftForDate(currentDate);
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
   const krPerKorning = antal ? Math.round(inkort / antal) : 0;
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
-
-  const startTid = shift ? shift.start.split(' ')[1] : '—';
-  const slutTid = shift ? shift.slut.split(' ')[1] : '—';
-  const arbetad = shift ? shift.tid : '—';
 
   const tripList = trips.map(t => `
     <div class="stat-row" onclick="toggle(this)">
@@ -84,18 +75,18 @@ function render() {
       <span class="label">${t.kvittonr}</span>
       <span class="value">${formatSEK(parseAmount(t.belopp))}</span>
     </div>
-    <div class="sub"><span>Start</span><span>${t.starttid}</span></div>
-    <div class="sub"><span>Slut</span><span>${t.sluttid}</span></div>
+    <div class="sub"><span>Start</span><span>${t.starttid} – zon ${t.startzon || '?'}</span></div>
+    <div class="sub"><span>Slut</span><span>${t.sluttid} – zon ${t.slutzon || '?'}</span></div>
     <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
-    <div class="sub"><span>Typ</span><span>—</span></div>
-    <div class="sub"><span>Dricks</span><span>—</span></div>
+    <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '—'}</span></div>
+    <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>
   `).join('');
 
   const html = `
     <div class="section">
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
-      <div class="sub"><span>Start</span><span>${startTid}</span></div>
-      <div class="sub"><span>Slut</span><span>${slutTid}</span></div>
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">—</span></div>
+      <div class="sub"><span>Start</span><span>—</span></div>
+      <div class="sub"><span>Slut</span><span>—</span></div>
 
       <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal || '—'}</span></div>
       <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
