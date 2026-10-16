@@ -1,5 +1,5 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6f8; color: #222; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #ffffff; color: #222; }
 
 #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1a365d; }
 .login-box { background: white; padding: 2rem; border-radius: 12px; text-align: center; width: 90%; max-width: 360px; }
@@ -63,6 +63,6 @@ header h1 { font-size: 1.3rem; }
 }
 
 main { max-width: 900px; margin: 1rem auto; padding: 0 1rem; }
-.section { background: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.section { background: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; }
 .section h2 { color: #1a365d; margin-bottom: 0.8rem; font-size: 1.1rem; }
 .card { background: #f8fafc; border-radius: 8px; padding: 1.2rem; text-align: center; color: #718096; }
