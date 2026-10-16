@@ -66,17 +66,32 @@ function render() {
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
 
+  const tripRows = trips.map(t => `<div class="sub"><span>${t.starttid}</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>`).join('');
+
   const html = `
     <div class="section">
-      <div class="stat-row"><span>Inkört</span><span>${formatSEK(inkort)}</span></div>
-      <div class="stat-row"><span>Arbetade timmar</span><span>—</span></div>
-      <div class="stat-row"><span>Körda km</span><span>—</span></div>
-      <div class="stat-row" onclick="editGoal()"><span>Mål</span><span>${formatSEK(goal)}</span></div>
-      <div class="stat-row"><span>Diff</span><span>${formatSEK(diff)}</span></div>
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span>Arbetade timmar</span><span>—</span></div>
+      <div class="sub"><span>Start</span><span>—</span></div>
+      <div class="sub"><span>Slut</span><span>—</span></div>
+
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span>Körda km</span><span>—</span></div>
+      <div class="sub"><span>Betalda</span><span>—</span></div>
+      <div class="sub"><span>Lediga</span><span>—</span></div>
+
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span>Inkört</span><span>${formatSEK(inkort)}</span></div>
+      ${tripRows}
+
+      <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span>Mål</span><span>${formatSEK(goal)}</span></div>
+      <div class="stat-row"><span class="toggle"></span><span>Diff</span><span>${formatSEK(diff)}</span></div>
     </div>
-    ${trips.length ? `<div class="section"><h3 style="padding:0.8rem 1.2rem;">Körningar</h3>${trips.map(t => `<div class="stat-row"><span>${t.starttid}</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>`).join('')}</div>` : ''}
   `;
   document.getElementById('dashboard').innerHTML = html;
+}
+
+function toggle(el) {
+  el.classList.toggle('open');
+  const icon = el.querySelector('.toggle');
+  icon.textContent = el.classList.contains('open') ? '−' : '+';
 }
 
 function editGoal() {
