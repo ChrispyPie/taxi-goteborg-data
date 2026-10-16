@@ -9,25 +9,26 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6f8; c
 header { background: #1a365d; color: white; padding: 1.2rem; text-align: center; }
 header h1 { font-size: 1.3rem; }
 
+.controls { background: white; padding: 1rem; }
+
 .tabs {
   display: flex;
   justify-content: center;
   gap: 0.6rem;
-  background: #1a365d;
-  padding: 0.5rem 1rem 1rem;
+  margin-bottom: 1rem;
 }
 .tab {
   padding: 0.5rem 1.4rem;
-  border: none;
+  border: 2px solid #1a365d;
   border-radius: 20px;
-  background: #2d4a7c;
-  color: #cbd5e0;
+  background: white;
+  color: #1a365d;
   font-size: 0.95rem;
   font-weight: 500;
 }
 .tab.active {
-  background: white;
-  color: #1a365d;
+  background: #1a365d;
+  color: white;
 }
 
 .date-nav {
@@ -35,23 +36,25 @@ header h1 { font-size: 1.3rem; }
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  background: #1a365d;
-  padding: 0 1rem 1.2rem;
 }
 .date-nav button {
-  background: #2d4a7c;
-  color: white;
-  border: none;
+  background: white;
+  color: #1a365d;
+  border: 2px solid #1a365d;
   width: 42px;
   height: 42px;
   border-radius: 10px;
   font-size: 1.3rem;
   cursor: pointer;
 }
-#today { background: #276749; }
-#current-date {
-  background: #2d4a7c;
+.date-nav button.active {
+  background: #1a365d;
   color: white;
+}
+#current-date {
+  background: white;
+  color: #1a365d;
+  border: 2px solid #1a365d;
   padding: 0.6rem 1.4rem;
   border-radius: 10px;
   min-width: 130px;
@@ -59,7 +62,7 @@ header h1 { font-size: 1.3rem; }
   font-weight: 500;
 }
 
-main { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+main { max-width: 900px; margin: 1rem auto; padding: 0 1rem; }
 .section { background: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 .section h2 { color: #1a365d; margin-bottom: 0.8rem; font-size: 1.1rem; }
 .card { background: #f8fafc; border-radius: 8px; padding: 1.2rem; text-align: center; color: #718096; }
