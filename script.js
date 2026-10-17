@@ -52,9 +52,19 @@ function parseAmount(str) {
   return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0;
 }
 
-function getTripsForDate(date) {
+function getShiftForDate(date) {
   const ymd = date.toISOString().slice(0,10).replace(/-/g, '');
-  return (data.trips || []).filter(t => (t.startdatum || '').replace(/-/g, '') === ymd);
+  return (data.shifts || []).find(s => (s.start || '').replace(/\s/g, '').startsWith(ymd));
+}
+
+function getTripsForShift(shift) {
+  if (!shift) return [];
+  const startDate = (shift.start || '').split(' ')[0];
+  const endDate = (shift.slut || '').split(' ')[0];
+  return (data.trips || []).filter(t => {
+    const td = (t.startdatum || '').replace(/-/g, '');
+    return td === startDate || td === endDate;
+  });
 }
 
 function sumByType(trips, typeCode) {
@@ -71,12 +81,19 @@ function render() {
     document.getElementById('last-updated').textContent = 'Senast uppdaterad ' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   }
 
-  const trips = getTripsForDate(currentDate);
+  const shift = getShiftForDate(currentDate);
+  const trips = getTripsForShift(shift);
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
   const krPerKorning = antal ? Math.round(inkort / antal) : 0;
+  const totalKm = trips.reduce((s, t) => s + parseAmount(t.kilometer), 0);
+  const krPerMil = totalKm ? Math.round(inkort / (totalKm / 10)) : 0;
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
+
+  const startTid = shift ? shift.start.split(' ')[1] : '—';
+  const slutTid = shift ? shift.slut.split(' ')[1] : '—';
+  const arbetad = shift ? shift.tid : '—';
 
   const kort = sumByType(trips, '160');
   const kredit = sumByType(trips, '283');
@@ -99,9 +116,12 @@ function render() {
 
   const html = `
     <div class="section">
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">—</span></div>
-      <div class="sub"><span>Start</span><span>—</span></div>
-      <div class="sub"><span>Slut</span><span>—</span></div>
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
+      <div class="sub"><span>Start</span><span>${startTid}</span></div>
+      <div class="sub"><span>Slut</span><span>${slutTid}</span></div>
+
+      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">${totalKm ? totalKm.toFixed(1) : '—'}</span></div>
+      <div class="sub"><span>Kr/mil</span><span>${formatSEK(krPerMil)}</span></div>
 
       <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal || '—'}</span></div>
       <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
