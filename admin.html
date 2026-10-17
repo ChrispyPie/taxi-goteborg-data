@@ -21,20 +21,27 @@
     .list-item { background: white; border: 1px solid #cbd5e0; border-radius: 4px; margin-bottom: 4px; }
     .list-row { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
     .list-row:hover { background: #f7fafc; }
-    .list-row .emoji { font-size: 20px; }
-    .sub { padding: 8px 16px 8px 48px; border-top: 1px solid #edf2f7; cursor: pointer; }
-    .sub:hover { background: #f7fafc; }
     .hidden { display: none; }
     .section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    .driver-row { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #edf2f7; gap: 12px; }
-    .driver-id { font-weight: 600; flex: 1; }
-    .driver-status { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+    .driver-row { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #edf2f7; gap: 8px; }
+    .driver-id { font-weight: 600; }
+    .driver-name { color: #4a5568; }
+    .driver-status { font-size: 11px; padding: 2px 6px; border-radius: 10px; }
     .status-active { background: #c6f6d5; color: #276749; }
     .status-inactive { background: #fed7d7; color: #c53030; }
     .status-pending { background: #fefcbf; color: #975a16; }
+    .cat-normal { }
+    .cat-semester { background: #e9d8fd; }
+    .cat-avslutad { background: #e2e8f0; opacity: 0.7; }
+    .cat-admin { background: #bee3f8; }
     .btn-small { padding: 4px 8px; font-size: 12px; }
     .password-box { background: #f7fafc; padding: 16px; border-radius: 8px; text-align: center; }
     .password-box code { font-size: 24px; font-weight: 700; letter-spacing: 4px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 13px; margin-bottom: 4px; color: #4a5568; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
+    .form-group textarea { min-height: 60px; resize: vertical; }
+    .section-header { font-size: 12px; font-weight: 600; color: #718096; padding: 8px 12px; background: #f7fafc; margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -52,6 +59,13 @@
       { id: 'chaufforer', icon: '👥', label: 'Chaufförer' },
       { id: 'statistik', icon: '📈', label: 'Statistik' }
     ];
+
+    const categories = {
+      normal: 'Normal',
+      semester: 'Semester',
+      avslutad: 'Avslutad',
+      admin: 'Admin'
+    };
 
     let view = localStorage.getItem('admin_view') || 'grid';
     let current = null;
@@ -85,16 +99,35 @@
       const ids = new Set();
       (data.shifts || []).forEach(s => { if (s.forar) ids.add(s.forar); });
       (data.trips || []).forEach(t => { if (t.forar) ids.add(t.forar); });
-      return Array.from(ids).sort();
+      return Array.from(ids);
+    }
+
+    function getSortedDrivers() {
+      const all = getAllDrivers();
+      const order = { normal: 0, admin: 1, semester: 2, avslutad: 3 };
+      return all.sort((a, b) => {
+        const catA = (drivers[a]?.category || 'normal');
+        const catB = (drivers[b]?.category || 'normal');
+        if (order[catA] !== order[catB]) return order[catA] - order[catB];
+        const nameA = drivers[a]?.name || a;
+        const nameB = drivers[b]?.name || b;
+        return nameA.localeCompare(nameB);
+      });
     }
 
     function getDriverStatus(id) {
       const d = drivers[id];
       if (!d) return 'inactive';
+      if (d.category === 'avslutad') return 'inactive';
       if (d.activated && d.expiry && new Date(d.expiry) > new Date()) {
         return d.loggedIn ? 'active' : 'pending';
       }
       return 'inactive';
+    }
+
+    function getFirstName(id) {
+      const name = drivers[id]?.name || '';
+      return name.split(' ')[0] || '';
     }
 
     function formatSEK(n) {
@@ -117,16 +150,46 @@
       if (current === 'chaufforer') {
         title.textContent = 'Chaufförer';
         back.classList.remove('hidden');
-        const allDrivers = getAllDrivers();
-        content.innerHTML = `<div class="section">${allDrivers.map(id => {
+        const sorted = getSortedDrivers();
+        let lastCat = null;
+        let html = '<div class="section">';
+        sorted.forEach(id => {
+          const d = drivers[id] || {};
+          const cat = d.category || 'normal';
+          if (cat !== lastCat) {
+            html += `<div class="section-header">${categories[cat]}</div>`;
+            lastCat = cat;
+          }
           const status = getDriverStatus(id);
           const statusLabel = status === 'active' ? 'Aktiv' : status === 'pending' ? 'Väntar' : 'Inaktiv';
-          return `<div class="driver-row">
-            <span class="driver-id">${id}</span>
+          const firstName = getFirstName(id);
+          html += `<div class="driver-row cat-${cat}">
+            <span class="driver-id" onclick="editDriver('${id}')" style="cursor:pointer;">${id}</span>
+            <span class="driver-name" onclick="editDriver('${id}')" style="cursor:pointer; flex:1;">${firstName}</span>
             <span class="driver-status status-${status}">${statusLabel}</span>
-            ${status === 'inactive' ? `<button class="btn-small" onclick="activateDriver('${id}')">Aktivera</button>` : `<button class="btn-small" onclick="deactivateDriver('${id}')">Avaktivera</button>`}
+            ${status === 'inactive' && cat !== 'avslutad' ? `<button class="btn-small" onclick="activateDriver('${id}')">Aktivera</button>` : ''}
+            ${status !== 'inactive' ? `<button class="btn-small" onclick="deactivateDriver('${id}')">Avaktivera</button>` : ''}
           </div>`;
-        }).join('')}</div>`;
+        });
+        html += '</div>';
+        content.innerHTML = html;
+      } else if (current === 'edit') {
+        title.textContent = 'Redigera ' + selectedDriver;
+        back.classList.remove('hidden');
+        const d = drivers[selectedDriver] || {};
+        content.innerHTML = `<div class="section">
+          <div class="form-group"><label>Namn</label><input id="f-name" value="${d.name || ''}"></div>
+          <div class="form-group"><label>Adress</label><input id="f-address" value="${d.address || ''}"></div>
+          <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${d.email || ''}"></div>
+          <div class="form-group"><label>Telefon</label><input id="f-phone" value="${d.phone || ''}"></div>
+          <div class="form-group"><label>Kategori</label>
+            <select id="f-category">
+              ${Object.entries(categories).map(([k, v]) => `<option value="${k}" ${d.category === k ? 'selected' : ''}>${v}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label>Anteckningar</label><textarea id="f-notes">${d.notes || ''}</textarea></div>
+          <button onclick="saveDriver()" style="width:100%;">Spara</button>
+        </div>`;
       } else if (current === 'activate') {
         title.textContent = 'Aktivera ' + selectedDriver;
         back.classList.remove('hidden');
@@ -179,7 +242,7 @@
           content.innerHTML = menu.map(m => `
             <div class="list-item">
               <div class="list-row" onclick="openMenu('${m.id}')">
-                <span class="emoji">${m.icon}</span>
+                <span style="font-size:20px;">${m.icon}</span>
                 <span>${m.label}</span>
               </div>
             </div>
@@ -197,6 +260,28 @@
       render();
     }
 
+    function editDriver(id) {
+      selectedDriver = id;
+      current = 'edit';
+      render();
+    }
+
+    function saveDriver() {
+      if (!drivers[selectedDriver]) drivers[selectedDriver] = {};
+      drivers[selectedDriver].name = document.getElementById('f-name').value;
+      drivers[selectedDriver].address = document.getElementById('f-address').value;
+      drivers[selectedDriver].email = document.getElementById('f-email').value;
+      drivers[selectedDriver].phone = document.getElementById('f-phone').value;
+      drivers[selectedDriver].category = document.getElementById('f-category').value;
+      drivers[selectedDriver].notes = document.getElementById('f-notes').value;
+      if (drivers[selectedDriver].category === 'avslutad') {
+        drivers[selectedDriver].activated = false;
+      }
+      alert('Sparat!');
+      current = 'chaufforer';
+      render();
+    }
+
     function activateDriver(id) {
       selectedDriver = id;
       tempPassword = generatePassword();
@@ -206,14 +291,18 @@
 
     function deactivateDriver(id) {
       if (confirm('Avaktivera ' + id + '?')) {
-        delete drivers[id];
+        if (drivers[id]) drivers[id].activated = false;
         render();
       }
     }
 
     function confirmActivation() {
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      drivers[selectedDriver] = { password: tempPassword, expiry, activated: true, loggedIn: false };
+      if (!drivers[selectedDriver]) drivers[selectedDriver] = {};
+      drivers[selectedDriver].password = tempPassword;
+      drivers[selectedDriver].expiry = expiry;
+      drivers[selectedDriver].activated = true;
+      drivers[selectedDriver].loggedIn = false;
       alert('Aktiverad!\nLösenord: ' + tempPassword);
       current = 'chaufforer';
       tempPassword = null;
