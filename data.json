@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-17T01:51:12.932545Z",
+  "last_updated": "2026-10-17T02:13:08.202004Z",
   "forar": "710022",
   "trips": [
     {"kvittonr": "029900-01", "startzon": "291", "slutzon": "268", "kilometer": "9,265", "dricks": "0,00", "kredittyp": "160", "belopp": "411,00", "starttid": "00:16", "sluttid": "00:25", "startdatum": "2026-10-01"},
@@ -27,6 +27,27 @@
     {"kvittonr": "030055-01", "startzon": "291", "slutzon": "23", "kilometer": "24,377", "dricks": "0,00", "kredittyp": "160", "belopp": "611,00", "starttid": "00:21", "sluttid": "00:40", "startdatum": "2026-10-13"},
     {"kvittonr": "030056-01", "startzon": "19", "slutzon": "19", "kilometer": "0,002", "dricks": "0,00", "kredittyp": "283", "belopp": "226,00", "starttid": "01:53", "sluttid": "01:54", "startdatum": "2026-10-13"},
     {"kvittonr": "030057-01", "startzon": "103", "slutzon": "298", "kilometer": "30,231", "dricks": "0,00", "kredittyp": "160", "belopp": "672,00", "starttid": "03:26", "sluttid": "03:59", "startdatum": "2026-10-13"},
-    {"kvittonr": "030058-01", "startzon": "206", "slutzon": "99", "kilometer": "5,466", "dricks": "0,00", "kredittyp": "160", "belopp": "294,00", "starttid": "04:28", "sluttid": "04:37", "startdatum": "2026-10-13"}
+    {"kvittonr": "030058-01", "startzon": "206", "slutzon": "99", "kilometer": "5,466", "dricks": "0,00", "kredittyp": "160", "belopp": "294,00", "starttid": "04:28", "sluttid": "04:37", "startdatum": "2026-10-13"},
+    {"kvittonr": "030059-01", "startzon": "10", "slutzon": "99", "kilometer": "2,089", "dricks": "0,00", "kredittyp": "160", "belopp": "219,00", "starttid": "04:47", "sluttid": "04:57", "startdatum": "2026-10-13"},
+    {"kvittonr": "030066-01", "startzon": "268", "slutzon": "161", "kilometer": "24,323", "dricks": "35,00", "kredittyp": "160", "belopp": "565,00", "starttid": "23:12", "sluttid": "23:30", "startdatum": "2026-10-13"},
+    {"kvittonr": "030067-01", "startzon": "291", "slutzon": "117", "kilometer": "34,582", "dricks": "0,00", "kredittyp": "160", "belopp": "781,00", "starttid": "00:15", "sluttid": "00:43", "startdatum": "2026-10-14"},
+    {"kvittonr": "030076-01", "startzon": "800", "slutzon": "298", "kilometer": "20,897", "dricks": "27,00", "kredittyp": "160", "belopp": "783,00", "starttid": "17:48", "sluttid": "18:13", "startdatum": "2026-10-14"},
+    {"kvittonr": "030077-01", "startzon": "290", "slutzon": "206", "kilometer": "21,045", "dricks": "0,00", "kredittyp": "283", "belopp": "591,00", "starttid": "19:12", "sluttid": "19:27", "startdatum": "2026-10-14"},
+    {"kvittonr": "030078-01", "startzon": "290", "slutzon": "181", "kilometer": "44,798", "dricks": "0,00", "kredittyp": "160", "belopp": "849,00", "starttid": "21:38", "sluttid": "22:16", "startdatum": "2026-10-14"},
+    {"kvittonr": "030079-01", "startzon": "292", "slutzon": "10", "kilometer": "25,314", "dricks": "0,00", "kredittyp": "160", "belopp": "761,00", "starttid": "23:56", "sluttid": "00:18", "startdatum": "2026-10-14"},
+    {"kvittonr": "030080-01", "startzon": "409", "slutzon": "409", "kilometer": "1,75", "dricks": "0,00", "kredittyp": "160", "belopp": "136,00", "starttid": "01:45", "sluttid": "01:50", "startdatum": "2026-10-15"},
+    {"kvittonr": "030081-01", "startzon": "409", "slutzon": "405", "kilometer": "1,488", "dricks": "0,00", "kredittyp": "160", "belopp": "103,00", "starttid": "01:51", "sluttid": "01:55", "startdatum": "2026-10-15"},
+    {"kvittonr": "030082-01", "startzon": "408", "slutzon": "298", "kilometer": "39,014", "dricks": "0,00", "kredittyp": "160", "belopp": "652,00", "starttid": "03:30", "sluttid": "04:02", "startdatum": "2026-10-15"},
+    {"kvittonr": "030083-01", "startzon": "99", "slutzon": "99", "kilometer": "0", "dricks": "0,00", "kredittyp": "160", "belopp": "234,00", "starttid": "04:43", "sluttid": "04:43", "startdatum": "2026-10-15"},
+    {"kvittonr": "030094-01", "startzon": "291", "slutzon": "232", "kilometer": "19,655", "dricks": "0,00", "kredittyp": "160", "belopp": "621,00", "starttid": "18:38", "sluttid": "19:04", "startdatum": "2026-10-15"},
+    {"kvittonr": "030095-01", "startzon": "163", "slutzon": "125", "kilometer": "12,918", "dricks": "0,00", "kredittyp": "283", "belopp": "531,00", "starttid": "20:41", "sluttid": "21:01", "startdatum": "2026-10-15"},
+    {"kvittonr": "030096-01", "startzon": "291", "slutzon": "268", "kilometer": "1,271", "dricks": "0,00", "kredittyp": "999", "belopp": "657,00", "starttid": "22:51", "sluttid": "22:52", "startdatum": "2026-10-15"},
+    {"kvittonr": "030097-01", "startzon": "268", "slutzon": "10", "kilometer": "23,015", "dricks": "0,00", "kredittyp": "160", "belopp": "556,00", "starttid": "22:53", "sluttid": "23:11", "startdatum": "2026-10-15"},
+    {"kvittonr": "030098-01", "startzon": "292", "slutzon": "23", "kilometer": "25,004", "dricks": "0,00", "kredittyp": "283", "belopp": "611,00", "starttid": "23:36", "sluttid": "23:58", "startdatum": "2026-10-15"},
+    {"kvittonr": "030099-01", "startzon": "292", "slutzon": "117", "kilometer": "38,327", "dricks": "0,00", "kredittyp": "283", "belopp": "781,00", "starttid": "00:31", "sluttid": "01:02", "startdatum": "2026-10-16"},
+    {"kvittonr": "030100-01", "startzon": "438", "slutzon": "298", "kilometer": "52,332", "dricks": "0,00", "kredittyp": "160", "belopp": "1473,00", "starttid": "04:03", "sluttid": "04:43", "startdatum": "2026-10-16"},
+    {"kvittonr": "030113-01", "startzon": "292", "slutzon": "140", "kilometer": "48,404", "dricks": "0,00", "kredittyp": "160", "belopp": "953,00", "starttid": "18:50", "sluttid": "19:29", "startdatum": "2026-10-16"},
+    {"kvittonr": "030114-01", "startzon": "268", "slutzon": "16", "kilometer": "22,995", "dricks": "0,00", "kredittyp": "160", "belopp": "651,00", "starttid": "22:43", "sluttid": "23:07", "startdatum": "2026-10-16"},
+    {"kvittonr": "030115-01", "startzon": "291", "slutzon": "615", "kilometer": "60,609", "dricks": "0,00", "kredittyp": "283", "belopp": "1724,00", "starttid": "00:09", "sluttid": "00:56", "startdatum": "2026-10-17"}
   ]
 }
