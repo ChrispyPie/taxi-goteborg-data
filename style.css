@@ -92,3 +92,20 @@ main { max-width: 900px; margin: 1rem auto; padding: 0 1rem; }
   color: #4a5568;
 }
 .sub.visible { display: flex; justify-content: space-between; }
+
+.shift-content { display: none; }
+.shift-trip {
+  display: flex;
+  padding: 0.5rem 1rem 0.5rem 2rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.shift-trip .toggle { margin-right: 0.3rem; width: 0.6rem; }
+.shift-trip span:nth-child(2) { flex: 1; }
+.trip-detail {
+  display: none;
+  padding: 0.2rem 1rem 0.2rem 3.5rem;
+  font-size: 0.85rem;
+  color: #718096;
+}
+.trip-detail.visible { display: flex; justify-content: space-between; }
