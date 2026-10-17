@@ -4,7 +4,7 @@ let currentDate = new Date();
 let currentTab = 'dag';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
-const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber' };
+const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber', '999': 'BOM' };
 
 async function loadData() {
   try {
@@ -68,7 +68,7 @@ function getTripsForShift(shift) {
 }
 
 function sumByType(trips, typeCode) {
-  return trips.filter(t => t.kredittyp === typeCode).reduce((s, t) => s + parseAmount(t.belopp), 0);
+  return trips.filter(t => t.kredittyp === typeCode && t.kredittyp !== '999').reduce((s, t) => s + parseAmount(t.belopp), 0);
 }
 
 function render() {
@@ -82,7 +82,10 @@ function render() {
   }
 
   const shift = getShiftForDate(currentDate);
-  const trips = getTripsForShift(shift);
+  const allTrips = getTripsForShift(shift);
+  const trips = allTrips.filter(t => t.kredittyp !== '999');
+  const bomTrips = allTrips.filter(t => t.kredittyp === '999');
+
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
   const krPerKorning = antal ? Math.round(inkort / antal) : 0;
@@ -101,18 +104,21 @@ function render() {
   const kontant = sumByType(trips, '1');
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
-  const tripList = trips.map(t => `
-    <div class="stat-row" onclick="toggle(this)">
+  const tripList = allTrips.map(t => {
+    const isBom = t.kredittyp === '999';
+    return `
+    <div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.5;' : ''}">
       <span class="toggle">+</span>
-      <span class="label">${t.kvittonr}</span>
-      <span class="value">${formatSEK(parseAmount(t.belopp))}</span>
+      <span class="label">${t.kvittonr}${isBom ? ' (BOM)' : ''}</span>
+      <span class="value">${isBom ? '—' : formatSEK(parseAmount(t.belopp))}</span>
     </div>
     <div class="sub"><span>Start</span><span>${t.starttid} – zon ${t.startzon || '?'}</span></div>
     <div class="sub"><span>Slut</span><span>${t.sluttid} – zon ${t.slutzon || '?'}</span></div>
-    <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
+    <div class="sub"><span>Betalt</span><span>${isBom ? '—' : formatSEK(parseAmount(t.belopp))}</span></div>
     <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '—'}</span></div>
     <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>
-  `).join('');
+  `;
+  }).join('');
 
   const html = `
     <div class="section">
@@ -137,7 +143,7 @@ function render() {
       <div class="stat-row"><span class="toggle"></span><span class="label">Diff</span><span class="value">${formatSEK(diff)}</span></div>
     </div>
 
-    ${trips.length ? `<div class="section">${tripList}</div>` : ''}
+    ${allTrips.length ? `<div class="section">${tripList}</div>` : ''}
   `;
   document.getElementById('dashboard').innerHTML = html;
 }
