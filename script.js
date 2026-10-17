@@ -80,6 +80,40 @@ function parseShiftTime(str) {
   return new Date(d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) + 'T' + t);
 }
 
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function getWeekEnd(date) {
+  const start = getWeekStart(date);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23,59,59,999);
+  return end;
+}
+
+function getMonthStart(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthEnd(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+}
+
+function getShiftsInRange(start, end) {
+  return (data.shifts || []).filter(s => {
+    const forar = s.forar || '710022';
+    if (forar !== currentDriver) return false;
+    const shiftStart = parseShiftTime(s.start);
+    return shiftStart && shiftStart >= start && shiftStart <= end;
+  });
+}
+
 function getShiftForDate(date) {
   const ymd = date.toISOString().slice(0,10).replace(/-/g, '');
   return (data.shifts || []).find(s => {
@@ -110,20 +144,56 @@ function sumByType(trips, typeCode) {
   return trips.filter(t => t.kredittyp === typeCode).reduce((s, t) => s + parseAmount(t.belopp), 0);
 }
 
+function parseTime(tid) {
+  if (!tid || tid === '—') return 0;
+  const parts = tid.split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
+}
+
+function formatTime(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h + ':' + String(m).padStart(2, '0');
+}
+
 function render() {
   const isTodayNow = isToday(currentDate);
-  document.getElementById('current-date').textContent = isTodayNow ? 'Idag' : formatDate(currentDate);
-  document.getElementById('today').classList.toggle('active', isTodayNow);
+  let label = formatDate(currentDate);
+  if (currentTab === 'dag' && isTodayNow) label = 'Idag';
+  if (currentTab === 'vecka') {
+    const ws = getWeekStart(currentDate);
+    const we = getWeekEnd(currentDate);
+    label = formatDate(ws) + ' – ' + formatDate(we);
+  }
+  if (currentTab === 'manad') {
+    label = currentDate.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
+  }
+  document.getElementById('current-date').textContent = label;
+  document.getElementById('today').classList.toggle('active', isTodayNow && currentTab === 'dag');
 
   if (data.last_updated) {
     const d = new Date(data.last_updated);
     document.getElementById('last-updated').textContent = 'Senast uppdaterad ' + d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   }
 
-  const shift = getShiftForDate(currentDate);
-  const allTrips = getTripsForShift(shift);
-  const trips = allTrips.filter(t => t.kredittyp !== '999');
+  let shifts = [];
+  if (currentTab === 'dag') {
+    const s = getShiftForDate(currentDate);
+    if (s) shifts = [s];
+  } else if (currentTab === 'vecka') {
+    shifts = getShiftsInRange(getWeekStart(currentDate), getWeekEnd(currentDate));
+  } else {
+    shifts = getShiftsInRange(getMonthStart(currentDate), getMonthEnd(currentDate));
+  }
 
+  let allTrips = [];
+  let totalMinutes = 0;
+  shifts.forEach(s => {
+    allTrips = allTrips.concat(getTripsForShift(s));
+    totalMinutes += parseTime(s.tid);
+  });
+
+  const trips = allTrips.filter(t => t.kredittyp !== '999');
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
   const krPerKorning = antal ? Math.round(inkort / antal) : 0;
@@ -131,10 +201,7 @@ function render() {
   const krPerMil = totalKm ? Math.round(inkort / (totalKm / 10)) : 0;
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
-
-  const startTid = shift ? shift.start.split(' ')[1] : '—';
-  const slutTid = shift ? shift.slut.split(' ')[1] : '—';
-  const arbetad = shift ? shift.tid : '—';
+  const arbetad = totalMinutes ? formatTime(totalMinutes) : '—';
 
   const kort = sumByType(trips, '160');
   const kredit = sumByType(trips, '283');
@@ -142,47 +209,34 @@ function render() {
   const kontant = sumByType(trips, '1');
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
-  const tripList = allTrips.map(t => {
-    const isBom = t.kredittyp === '999';
-    return `
-    <div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}">
-      <span class="toggle">+</span>
-      <span class="label">${t.kvittonr}${isBom ? ' (BOM)' : ''}</span>
-      <span class="value">${formatSEK(parseAmount(t.belopp))}</span>
-    </div>
-    <div class="sub"><span>Start</span><span>${t.starttid} – zon ${t.startzon || '?'}</span></div>
-    <div class="sub"><span>Slut</span><span>${t.sluttid} – zon ${t.slutzon || '?'}</span></div>
-    <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
-    <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '—'}</span></div>
-    <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>
-  `;
-  }).join('');
+  let html = `<div class="section">
+    <div class="stat-row"><span class="toggle"></span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">${totalKm ? totalKm.toFixed(1) : '—'}</span></div>
+    <div class="sub"><span>Kr/mil</span><span>${formatSEK(krPerMil)}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal || '—'}</span></div>
+    <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Inkört</span><span class="value">${formatSEK(inkort)}</span></div>
+    <div class="sub"><span>Kort</span><span>${formatSEK(kort)}</span></div>
+    <div class="sub"><span>Kredit</span><span>${formatSEK(kredit)}</span></div>
+    <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
+    <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>
+    <div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>
+    <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value">${formatSEK(goal)}</span></div>
+    <div class="stat-row"><span class="toggle"></span><span class="label">Diff</span><span class="value">${formatSEK(diff)}</span></div>
+  </div>`;
 
-  const html = `
-    <div class="section">
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
-      <div class="sub"><span>Start</span><span>${startTid}</span></div>
-      <div class="sub"><span>Slut</span><span>${slutTid}</span></div>
+  if (currentTab === 'dag' && allTrips.length) {
+    html += `<div class="section">${allTrips.map(t => {
+      const isBom = t.kredittyp === '999';
+      return `<div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}"><span class="toggle">+</span><span class="label">${t.kvittonr}${isBom ? ' (BOM)' : ''}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>
+      <div class="sub"><span>Start</span><span>${t.starttid} – zon ${t.startzon || '?'}</span></div>
+      <div class="sub"><span>Slut</span><span>${t.sluttid} – zon ${t.slutzon || '?'}</span></div>
+      <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
+      <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '—'}</span></div>
+      <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>`;
+    }).join('')}</div>`;
+  }
 
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">${totalKm ? totalKm.toFixed(1) : '—'}</span></div>
-      <div class="sub"><span>Kr/mil</span><span>${formatSEK(krPerMil)}</span></div>
-
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal || '—'}</span></div>
-      <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
-
-      <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Inkört</span><span class="value">${formatSEK(inkort)}</span></div>
-      <div class="sub"><span>Kort</span><span>${formatSEK(kort)}</span></div>
-      <div class="sub"><span>Kredit</span><span>${formatSEK(kredit)}</span></div>
-      <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
-      <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>
-      <div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>
-
-      <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value">${formatSEK(goal)}</span></div>
-      <div class="stat-row"><span class="toggle"></span><span class="label">Diff</span><span class="value">${formatSEK(diff)}</span></div>
-    </div>
-
-    ${allTrips.length ? `<div class="section">${tripList}</div>` : ''}
-  `;
   document.getElementById('dashboard').innerHTML = html;
 }
 
@@ -190,7 +244,6 @@ function toggle(el) {
   const isOpen = el.classList.toggle('open');
   const icon = el.querySelector('.toggle');
   if (icon) icon.textContent = isOpen ? '−' : '+';
-
   let next = el.nextElementSibling;
   while (next && next.classList.contains('sub')) {
     next.classList.toggle('visible', isOpen);
@@ -215,6 +268,16 @@ document.querySelectorAll('.tab').forEach(btn => {
   });
 });
 
-document.getElementById('prev').onclick = () => { currentDate.setDate(currentDate.getDate() - 1); render(); };
-document.getElementById('next').onclick = () => { currentDate.setDate(currentDate.getDate() + 1); render(); };
+document.getElementById('prev').onclick = () => {
+  if (currentTab === 'vecka') currentDate.setDate(currentDate.getDate() - 7);
+  else if (currentTab === 'manad') currentDate.setMonth(currentDate.getMonth() - 1);
+  else currentDate.setDate(currentDate.getDate() - 1);
+  render();
+};
+document.getElementById('next').onclick = () => {
+  if (currentTab === 'vecka') currentDate.setDate(currentDate.getDate() + 7);
+  else if (currentTab === 'manad') currentDate.setMonth(currentDate.getMonth() + 1);
+  else currentDate.setDate(currentDate.getDate() + 1);
+  render();
+};
 document.getElementById('today').onclick = () => { currentDate = new Date(); render(); };
