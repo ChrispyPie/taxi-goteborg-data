@@ -39,3 +39,13 @@ jobs:
           git add data.json || true
           git diff --staged --quiet || git commit -m "Update data from STIG [skip ci]"
           git push
+
+      - name: Copy data to gh-pages
+        run: |
+          git fetch origin gh-pages
+          git checkout gh-pages
+          git checkout main -- data.json
+          git add data.json
+          git diff --staged --quiet || git commit -m "Update data from scrape [skip ci]"
+          git push origin gh-pages
+          git checkout main
