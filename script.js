@@ -201,6 +201,12 @@ function render() {
     totalMinutes += parseTime(s.tid);
   });
 
+  allTrips.sort((a, b) => {
+    const da = (a.startdatum || '') + (a.starttid || '');
+    const db = (b.startdatum || '') + (b.starttid || '');
+    return db.localeCompare(da);
+  });
+
   const trips = allTrips.filter(t => t.kredittyp !== '999');
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
@@ -263,10 +269,11 @@ function render() {
     ${diffSubs}
   </div>`;
 
-  if (currentTab === 'dag' && allTrips.length) {
+  if (allTrips.length) {
     html += `<div class="section">${allTrips.map(t => {
       const isBom = t.kredittyp === '999';
-      return `<div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}"><span class="toggle">+</span><span class="label">${t.kvittonr}${isBom ? ' (BOM)' : ''}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>
+      const dateLabel = currentTab !== 'dag' && t.startdatum ? t.startdatum.slice(5) + ' ' : '';
+      return `<div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}"><span class="toggle">+</span><span class="label">${dateLabel}${t.kvittonr}${isBom ? ' (BOM)' : ''}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>
       <div class="sub"><span>Start</span><span>${t.starttid || '00:00'} – zon ${t.startzon || '?'}</span></div>
       <div class="sub"><span>Slut</span><span>${t.sluttid || '00:00'} – zon ${t.slutzon || '?'}</span></div>
       <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
