@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämta pass för förare 710022.
+STIG scraper – hämtar nya körningar dag för dag från senaste sparade.
 """
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
 STIG_URL = "https://stig.taxinet.se"
@@ -22,10 +22,70 @@ def login(page):
     page.wait_for_load_state("networkidle")
     return "Login.aspx" not in page.url
 
-def fetch_passrapport(page, forar_id):
+def get_latest_date(trips):
+    dates = []
+    for t in trips:
+        d = t.get("startdatum", "")
+        if d and len(d) == 10:
+            dates.append(datetime.strptime(d, "%Y-%m-%d"))
+    return max(dates) if dates else datetime(2026, 10, 1)
+
+def scrape_day(page, forar_id, date_str):
+    page.goto(f"{STIG_URL}/Resaposter.aspx")
+    page.wait_for_load_state("networkidle")
+    page.evaluate(f"""
+        () => {{
+            document.getElementById('MainContent_tb_Forarid').value = '{forar_id}';
+            document.getElementById('MainContent_tb_ResdatumFom').value = '{date_str}';
+            document.getElementById('MainContent_tb_ResdatumTom').value = '{date_str}';
+        }}
+    """)
+    page.click("input[type='submit'], button:has-text('Sök')")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1000)
+
+    receipts = []
+    rows = page.query_selector_all("table tr")
+    for row in rows[1:]:
+        cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
+        if len(cells) >= 5 and "-" in cells[4]:
+            receipts.append(cells[4])
+    return receipts
+
+def scrape_trip_detail(page, kvitto):
+    try:
+        page.click(f"text={kvitto}")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(500)
+        detail = page.evaluate("""
+            () => {
+                const get = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? el.value : '';
+                };
+                return {
+                    startzon: get('MainContent_tb_valdresa_Startzon'),
+                    slutzon: get('MainContent_tb_valdresa_Slutzon'),
+                    kilometer: get('MainContent_tb_valdresa_Kilometer2'),
+                    dricks: get('MainContent_tb_valdresa_Dricks'),
+                    kredittyp: get('MainContent_ddl_valdresa_Kredittyp'),
+                    belopp: get('MainContent_tb_valdresa_Taxameterbelopp'),
+                    starttid: get('MainContent_tb_valdresa_Starttid'),
+                    sluttid: get('MainContent_tb_valdresa_Sluttid'),
+                    startdatum: get('MainContent_tb_valdresa_Startdatum')
+                };
+            }
+        """)
+        page.go_back()
+        page.wait_for_load_state("networkidle")
+        return detail
+    except Exception as e:
+        print(f"Detalj misslyckades för {kvitto}: {e}")
+        return {}
+
+def fetch_shifts(page, forar_id):
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
-
     page.evaluate(f"""
         () => {{
             document.getElementById('MainContent_tbxForarId').value = '{forar_id}';
@@ -35,7 +95,7 @@ def fetch_passrapport(page, forar_id):
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(1500)
 
     shifts = []
     rows = page.query_selector_all("table tr")
@@ -59,6 +119,20 @@ def main():
 
     forar_id = "710022"
 
+    try:
+        with open("data.json", "r") as f:
+            data = json.load(f)
+    except:
+        data = {"trips": [], "shifts": []}
+
+    existing_kvitton = {t.get("kvittonr") for t in data.get("trips", [])}
+    latest = get_latest_date(data.get("trips", []))
+    start_date = latest + timedelta(days=1)
+    today = datetime.now()
+
+    print(f"Senaste datum: {latest.strftime('%Y-%m-%d')}")
+    print(f"Börjar från: {start_date.strftime('%Y-%m-%d')}")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
@@ -68,27 +142,32 @@ def main():
             browser.close()
             return
 
-        print("Hämtar Passrapport...")
-        shifts = fetch_passrapport(page, forar_id)
-        print(f"Hittade {len(shifts)} skift")
+        new_trips = []
+        current = start_date
+        while current <= today:
+            date_str = current.strftime("%Y-%m-%d")
+            print(f"Söker {date_str}...")
+            receipts = scrape_day(page, forar_id, date_str)
+            for kvitto in receipts:
+                if kvitto not in existing_kvitton:
+                    print(f"  Hämtar {kvitto}")
+                    detail = scrape_trip_detail(page, kvitto)
+                    new_trips.append({"kvittonr": kvitto, **detail})
+                    existing_kvitton.add(kvitto)
+            current += timedelta(days=1)
 
-        try:
-            with open("data.json", "r") as f:
-                existing = json.load(f)
-        except:
-            existing = {"trips": []}
+        print("Hämtar skift...")
+        shifts = fetch_shifts(page, forar_id)
 
-        data = {
-            "last_updated": datetime.utcnow().isoformat() + "Z",
-            "forar": forar_id,
-            "shifts": shifts,
-            "trips": existing.get("trips", [])
-        }
+        data["trips"] = data.get("trips", []) + new_trips
+        data["shifts"] = shifts
+        data["last_updated"] = datetime.utcnow().isoformat() + "Z"
+        data["forar"] = forar_id
 
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"Sparat {len(shifts)} skift")
+        print(f"Lade till {len(new_trips)} nya körningar")
         browser.close()
 
 if __name__ == "__main__":
