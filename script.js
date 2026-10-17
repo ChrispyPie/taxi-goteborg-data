@@ -11,6 +11,22 @@ async function loadData() {
   try {
     const res = await fetch('data.json?t=' + Date.now());
     data = await res.json();
+    // Dedupe shifts by passnr + forar
+    const seenShifts = new Set();
+    data.shifts = (data.shifts || []).filter(s => {
+      const key = (s.passnr || '') + '|' + (s.forar || '710022');
+      if (seenShifts.has(key)) return false;
+      seenShifts.add(key);
+      return true;
+    });
+    // Dedupe trips by kvittonr + forar
+    const seenTrips = new Set();
+    data.trips = (data.trips || []).filter(t => {
+      const key = (t.kvittonr || '') + '|' + (t.forar || '710022');
+      if (seenTrips.has(key)) return false;
+      seenTrips.add(key);
+      return true;
+    });
   } catch (e) {
     data = {};
   }
