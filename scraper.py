@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämta data för förare 710022, oktober 2026.
+STIG scraper – hämta ALLA körningar för förare 710022, oktober 2026.
 """
 
 import os
@@ -26,7 +26,7 @@ def scrape_trip_detail(page, kvitto):
     try:
         page.click(f"text={kvitto}")
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         detail = page.evaluate("""
             () => {
@@ -76,7 +76,7 @@ def main():
             () => {{
                 document.getElementById('MainContent_tb_Forarid').value = '{forar_id}';
                 document.getElementById('MainContent_tb_ResdatumFom').value = '2026-10-01';
-                document.getElementById('MainContent_tb_ResdatumTom').value = '2026-10-16';
+                document.getElementById('MainContent_tb_ResdatumTom').value = '2026-10-17';
             }}
         """)
         page.click("input[type='submit'], button:has-text('Sök')")
@@ -92,8 +92,8 @@ def main():
         print(f"Hittade {len(receipts)} körningar")
 
         trips = []
-        for kvitto in receipts[-5:]:
-            print(f"Hämtar {kvitto}...")
+        for i, kvitto in enumerate(receipts):
+            print(f"Hämtar {i+1}/{len(receipts)}: {kvitto}")
             detail = scrape_trip_detail(page, kvitto)
             trips.append({"kvittonr": kvitto, **detail})
 
