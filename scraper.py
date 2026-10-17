@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämtar körningar dag för dag.
-Börjar från 1 oktober för att bygga databasen.
--2 kvitton ersätter motsvarande -1.
+STIG scraper – test med förare 844601.
 """
 
 import os
@@ -111,7 +109,7 @@ def main():
         print("STIG_PASSWORD saknas")
         return
 
-    forar_id = "710022"
+    forar_id = "844601"
 
     try:
         with open("data.json", "r") as f:
@@ -122,13 +120,11 @@ def main():
     trips = data.get("trips", [])
     existing_kvitton = {t.get("kvittonr") for t in trips}
 
-    # För databasbygge: börja från 1 oktober
-    # Senare: börja från igår
     start_date = datetime(2026, 10, 1)
     today = datetime.now()
 
+    print(f"Förare: {forar_id}")
     print(f"Börjar från: {start_date.strftime('%Y-%m-%d')}")
-    print(f"Till: {today.strftime('%Y-%m-%d')}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -140,39 +136,32 @@ def main():
             return
 
         new_trips = []
-        replaced = 0
         current = start_date
         while current <= today:
             date_str = current.strftime("%Y-%m-%d")
             print(f"Söker {date_str}...")
             receipts = scrape_day(page, forar_id, date_str)
             for kvitto in receipts:
-                if kvitto.endswith("-02"):
-                    base = kvitto[:-3] + "-01"
-                    trips = [t for t in trips if t.get("kvittonr") != base]
-                    print(f"  Ersätter {base} med {kvitto}")
-                    detail = scrape_trip_detail(page, kvitto)
-                    trips.append({"kvittonr": kvitto, **detail})
-                    replaced += 1
-                elif kvitto not in existing_kvitton:
+                if kvitto not in existing_kvitton:
                     print(f"  Hämtar {kvitto}")
                     detail = scrape_trip_detail(page, kvitto)
-                    new_trips.append({"kvittonr": kvitto, **detail})
+                    new_trips.append({"kvittonr": kvitto, "forar": forar_id, **detail})
                     existing_kvitton.add(kvitto)
             current += timedelta(days=1)
 
         print("Hämtar skift...")
         shifts = fetch_shifts(page, forar_id)
+        for s in shifts:
+            s["forar"] = forar_id
 
         data["trips"] = trips + new_trips
-        data["shifts"] = shifts
+        data["shifts"] = data.get("shifts", []) + shifts
         data["last_updated"] = datetime.utcnow().isoformat() + "Z"
-        data["forar"] = forar_id
 
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"Lade till {len(new_trips)} nya, ersatte {replaced}")
+        print(f"Lade till {len(new_trips)} körningar för {forar_id}")
         browser.close()
 
 if __name__ == "__main__":
