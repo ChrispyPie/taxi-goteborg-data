@@ -19,12 +19,13 @@ jobs:
           python-version: '3.11'
       
       - name: Install dependencies
-        run: pip install playwright && playwright install chromium
+        run: pip install playwright && playwright install chromium --with-deps
       
       - name: Run import
         env:
           STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
           STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+          IMPORT_MONTH: ${{ inputs.month }}
         run: python import_monthly.py
       
       - name: Copy to gh-pages
@@ -35,5 +36,5 @@ jobs:
           git checkout gh-pages
           git checkout main -- data.json
           git add data.json
-          git commit -m "Import monthly data" || echo "No changes"
+          git commit -m "Import ${{ inputs.month }}" || echo "No changes"
           git push origin gh-pages
