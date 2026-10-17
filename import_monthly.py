@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
 Importerar månadsdata från STIG MedlemsRapporter.
-Körs manuellt eller via GitHub Actions.
 """
 
 import os
 import json
-import requests
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
 STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
 PASSWORD = os.environ.get("STIG_PASSWORD", "")
+MONTH = os.environ.get("IMPORT_MONTH", "2026-09")
 
 def login(page):
     page.goto(f"{STIG_URL}/Login.aspx")
@@ -30,9 +29,8 @@ def download_monthly(page, year_month):
     page.fill("#MainContent_tb_sok_Datum", year_month)
     page.click("#MainContent_btn_Sok")
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(1500)
     
-    # Download pass file
     pass_data = page.evaluate("""
         async () => {
             const form = document.querySelector('form');
@@ -44,7 +42,6 @@ def download_monthly(page, year_month):
         }
     """)
     
-    # Download resapost file
     trip_data = page.evaluate("""
         async () => {
             const form = document.querySelector('form');
@@ -109,7 +106,8 @@ def main():
         print("STIG_PASSWORD saknas")
         return
     
-    # Load existing data
+    print(f"Importerar månad: {MONTH}")
+    
     try:
         with open("data.json") as f:
             data = json.load(f)
@@ -118,9 +116,6 @@ def main():
     
     seen_shifts = {(s.get("passnr"), s.get("forar")) for s in data.get("shifts", [])}
     seen_trips = {(t.get("kvittonr"), t.get("forar")) for t in data.get("trips", [])}
-    
-    # Import months (edit this list)
-    months = ["2026-09"]  # Add more: "2026-08", "2026-07", etc.
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -131,30 +126,29 @@ def main():
             browser.close()
             return
         
-        for ym in months:
-            print(f"Importerar {ym}...")
-            pass_text, trip_text = download_monthly(page, ym)
-            
-            new_shifts = parse_shifts(pass_text)
-            new_trips = parse_trips(trip_text)
-            
-            added_s = added_t = 0
-            for s in new_shifts:
-                key = (s["passnr"], s["forar"])
-                if key not in seen_shifts:
-                    seen_shifts.add(key)
-                    data["shifts"].append(s)
-                    added_s += 1
-            
-            for t in new_trips:
-                key = (t["kvittonr"], t["forar"])
-                if key not in seen_trips:
-                    seen_trips.add(key)
-                    data["trips"].append(t)
-                    added_t += 1
-            
-            print(f"  +{added_s} skift, +{added_t} körningar")
+        pass_text, trip_text = download_monthly(page, MONTH)
+        print(f"Pass: {len(pass_text)} bytes, Resa: {len(trip_text)} bytes")
         
+        new_shifts = parse_shifts(pass_text)
+        new_trips = parse_trips(trip_text)
+        print(f"Parsade: {len(new_shifts)} skift, {len(new_trips)} körningar")
+        
+        added_s = added_t = 0
+        for s in new_shifts:
+            key = (s["passnr"], s["forar"])
+            if key not in seen_shifts:
+                seen_shifts.add(key)
+                data["shifts"].append(s)
+                added_s += 1
+        
+        for t in new_trips:
+            key = (t["kvittonr"], t["forar"])
+            if key not in seen_trips:
+                seen_trips.add(key)
+                data["trips"].append(t)
+                added_t += 1
+        
+        print(f"Tillagda: +{added_s} skift, +{added_t} körningar")
         browser.close()
     
     data["last_updated"] = datetime.utcnow().isoformat() + "Z"
