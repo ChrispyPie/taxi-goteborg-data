@@ -6,12 +6,13 @@ let currentDriver = localStorage.getItem('taxi_driver') || '';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
 const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber', '999': 'BOM' };
+const weekdays = ['Sö', 'Må', 'Ti', 'On', 'To', 'Fr', 'Lö'];
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
 
 async function loadData() {
   try {
     const res = await fetch('data.json?t=' + Date.now());
     data = await res.json();
-    // Dedupe shifts by passnr + forar
     const seenShifts = new Set();
     data.shifts = (data.shifts || []).filter(s => {
       const key = (s.passnr || '') + '|' + (s.forar || '710022');
@@ -19,7 +20,6 @@ async function loadData() {
       seenShifts.add(key);
       return true;
     });
-    // Dedupe trips by kvittonr + forar
     const seenTrips = new Set();
     data.trips = (data.trips || []).filter(t => {
       const key = (t.kvittonr || '') + '|' + (t.forar || '710022');
@@ -71,10 +71,6 @@ document.getElementById('password').addEventListener('keypress', e => {
 document.getElementById('driver-id').addEventListener('keypress', e => {
   if (e.key === 'Enter') document.getElementById('password').focus();
 });
-
-function formatDate(d) {
-  return d.toLocaleDateString('sv-SE', { day: '2-digit', month: '2-digit' });
-}
 
 function getWeekNumber(d) {
   const date = new Date(d);
@@ -183,14 +179,18 @@ function formatTime(minutes) {
 function render() {
   const isTodayNow = isToday(currentDate);
   const dateEl = document.getElementById('current-date');
+  const yy = String(currentDate.getFullYear()).slice(-2);
   
   if (currentTab === 'dag') {
-    dateEl.textContent = isTodayNow ? 'Idag' : formatDate(currentDate);
+    const wd = weekdays[currentDate.getDay()];
+    const dd = String(currentDate.getDate()).padStart(2, '0');
+    const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+    dateEl.textContent = wd + ' ' + dd + '/' + mm + '-' + yy;
   } else if (currentTab === 'vecka') {
     const wn = getWeekNumber(currentDate);
-    dateEl.textContent = 'Vecka ' + wn;
+    dateEl.textContent = 'V' + wn + ' -' + yy;
   } else {
-    dateEl.textContent = currentDate.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
+    dateEl.textContent = months[currentDate.getMonth()] + ' -' + yy;
   }
   
   document.getElementById('today').classList.toggle('active', isTodayNow && currentTab === 'dag');
