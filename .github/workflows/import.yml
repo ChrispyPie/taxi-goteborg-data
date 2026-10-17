@@ -8,6 +8,9 @@ on:
         required: true
         default: '2026-09'
 
+permissions:
+  contents: write
+
 jobs:
   import:
     runs-on: ubuntu-latest
@@ -15,6 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - uses: actions/setup-python@v5
         with:
@@ -30,16 +34,13 @@ jobs:
           IMPORT_MONTH: ${{ inputs.month }}
         run: python import_monthly.py
       
-      - name: Commit to main
+      - name: Commit and push
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json
           git commit -m "Import ${{ inputs.month }}" || echo "No changes"
-          git push origin main
-      
-      - name: Copy to gh-pages
-        run: |
+          git push
           git fetch origin gh-pages
           git checkout -B gh-pages origin/gh-pages
           git checkout main -- data.json
