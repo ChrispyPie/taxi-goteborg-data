@@ -2,7 +2,7 @@ const MASTER_PASSWORD = 'taxi2026';
 let data = {};
 let currentDate = new Date();
 let currentTab = 'dag';
-let currentDriver = localStorage.getItem('taxi_driver') || '710022';
+let currentDriver = localStorage.getItem('taxi_driver') || '';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
 const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber', '999': 'BOM' };
@@ -19,13 +19,17 @@ async function loadData() {
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('driver-select').value = currentDriver;
+  document.getElementById('driver-label').textContent = currentDriver;
   loadData().then(render);
 }
 
 function checkPassword() {
-  if (document.getElementById('password').value === MASTER_PASSWORD) {
+  const driverId = document.getElementById('driver-id').value.trim();
+  const password = document.getElementById('password').value;
+  if (driverId && password === MASTER_PASSWORD) {
+    currentDriver = driverId;
     localStorage.setItem('taxi_logged_in', '1');
+    localStorage.setItem('taxi_driver', driverId);
     showApp();
   } else {
     document.getElementById('login-error').style.display = 'block';
@@ -34,21 +38,22 @@ function checkPassword() {
 
 function logout() {
   localStorage.removeItem('taxi_logged_in');
+  localStorage.removeItem('taxi_driver');
+  currentDriver = '';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
+  document.getElementById('driver-id').value = '';
   document.getElementById('password').value = '';
+  document.getElementById('login-error').style.display = 'none';
 }
 
-function changeDriver() {
-  currentDriver = document.getElementById('driver-select').value;
-  localStorage.setItem('taxi_driver', currentDriver);
-  render();
-}
-
-if (localStorage.getItem('taxi_logged_in') === '1') showApp();
+if (localStorage.getItem('taxi_logged_in') === '1' && currentDriver) showApp();
 
 document.getElementById('password').addEventListener('keypress', e => {
   if (e.key === 'Enter') checkPassword();
+});
+document.getElementById('driver-id').addEventListener('keypress', e => {
+  if (e.key === 'Enter') document.getElementById('password').focus();
 });
 
 function formatDate(d) {
