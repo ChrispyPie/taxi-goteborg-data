@@ -34,6 +34,7 @@
     .cat-semester { background: #e9d8fd; }
     .cat-avslutad { background: #e2e8f0; opacity: 0.7; }
     .cat-admin { background: #bee3f8; }
+    .cat-agare { background: #fbd38d; }
     .btn-small { padding: 4px 8px; font-size: 12px; }
     .password-box { background: #f7fafc; padding: 16px; border-radius: 8px; text-align: center; }
     .password-box code { font-size: 24px; font-weight: 700; letter-spacing: 4px; }
@@ -42,6 +43,7 @@
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
     .form-group textarea { min-height: 60px; resize: vertical; }
     .section-header { font-size: 12px; font-weight: 600; color: #718096; padding: 8px 12px; background: #f7fafc; margin-top: 16px; }
+    .data-btns { display: flex; gap: 8px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -52,19 +54,22 @@
     <button id="toggle-view">Ikoner</button>
   </header>
   <div id="content"></div>
+  <input type="file" id="import-file" accept=".json" class="hidden">
 
   <script>
     const menu = [
       { id: 'oversikt', icon: '📊', label: 'Översikt' },
       { id: 'chaufforer', icon: '👥', label: 'Chaufförer' },
-      { id: 'statistik', icon: '📈', label: 'Statistik' }
+      { id: 'statistik', icon: '📈', label: 'Statistik' },
+      { id: 'data', icon: '💾', label: 'Data' }
     ];
 
     const categories = {
+      agare: 'Ägare',
+      admin: 'Admin',
       normal: 'Normal',
       semester: 'Semester',
-      avslutad: 'Avslutad',
-      admin: 'Admin'
+      avslutad: 'Avslutad'
     };
 
     let view = localStorage.getItem('admin_view') || 'grid';
@@ -76,16 +81,27 @@
 
     async function loadData() {
       try {
-        const [dataRes, driversRes] = await Promise.all([
-          fetch('data.json?t=' + Date.now()),
-          fetch('drivers.json?t=' + Date.now())
-        ]);
+        const dataRes = await fetch('data.json?t=' + Date.now());
         data = await dataRes.json();
-        const driversData = await driversRes.json();
-        drivers = driversData.drivers || {};
       } catch (e) {
         console.error(e);
       }
+      const saved = localStorage.getItem('taxi_drivers');
+      if (saved) {
+        drivers = JSON.parse(saved);
+      } else {
+        try {
+          const driversRes = await fetch('drivers.json?t=' + Date.now());
+          const driversData = await driversRes.json();
+          drivers = driversData.drivers || {};
+        } catch (e) {
+          drivers = {};
+        }
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('taxi_drivers', JSON.stringify(drivers));
     }
 
     function generatePassword() {
@@ -104,7 +120,7 @@
 
     function getSortedDrivers() {
       const all = getAllDrivers();
-      const order = { normal: 0, admin: 1, semester: 2, avslutad: 3 };
+      const order = { agare: 0, admin: 1, normal: 2, semester: 3, avslutad: 4 };
       return all.sort((a, b) => {
         const catA = (drivers[a]?.category || 'normal');
         const catB = (drivers[b]?.category || 'normal');
@@ -138,6 +154,30 @@
       return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0;
     }
 
+    function exportData() {
+      const blob = new Blob([JSON.stringify({ drivers }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'drivers.json';
+      a.click();
+    }
+
+    function importData(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          drivers = imported.drivers || imported;
+          saveToStorage();
+          alert('Importerat!');
+          render();
+        } catch (err) {
+          alert('Fel vid import');
+        }
+      };
+      reader.readAsText(file);
+    }
+
     function render() {
       const content = document.getElementById('content');
       const title = document.getElementById('title');
@@ -157,7 +197,7 @@
           const d = drivers[id] || {};
           const cat = d.category || 'normal';
           if (cat !== lastCat) {
-            html += `<div class="section-header">${categories[cat]}</div>`;
+            html += `<div class="section-header">${categories[cat] || cat}</div>`;
             lastCat = cat;
           }
           const status = getDriverStatus(id);
@@ -204,6 +244,16 @@
             </div>
           </div>
           <p style="margin-top:12px; font-size:14px; color:#718096; text-align:center;">Gäller i 24 timmar</p>
+        </div>`;
+      } else if (current === 'data') {
+        title.textContent = 'Data';
+        back.classList.remove('hidden');
+        content.innerHTML = `<div class="section">
+          <p style="margin-bottom:12px;">Data sparas i webbläsaren. Exportera för att spara på annan enhet.</p>
+          <div class="data-btns">
+            <button onclick="exportData()">Exportera</button>
+            <button onclick="document.getElementById('import-file').click()">Importera</button>
+          </div>
         </div>`;
       } else if (current === 'oversikt') {
         title.textContent = 'Översikt';
@@ -277,6 +327,7 @@
       if (drivers[selectedDriver].category === 'avslutad') {
         drivers[selectedDriver].activated = false;
       }
+      saveToStorage();
       alert('Sparat!');
       current = 'chaufforer';
       render();
@@ -292,6 +343,7 @@
     function deactivateDriver(id) {
       if (confirm('Avaktivera ' + id + '?')) {
         if (drivers[id]) drivers[id].activated = false;
+        saveToStorage();
         render();
       }
     }
@@ -303,6 +355,7 @@
       drivers[selectedDriver].expiry = expiry;
       drivers[selectedDriver].activated = true;
       drivers[selectedDriver].loggedIn = false;
+      saveToStorage();
       alert('Aktiverad!\nLösenord: ' + tempPassword);
       current = 'chaufforer';
       tempPassword = null;
@@ -323,6 +376,9 @@
     document.getElementById('home').onclick = goHome;
     document.getElementById('back').onclick = goBack;
     document.getElementById('toggle-view').onclick = toggleView;
+    document.getElementById('import-file').onchange = (e) => {
+      if (e.target.files[0]) importData(e.target.files[0]);
+    };
     loadData().then(render);
   </script>
 </body>
