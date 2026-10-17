@@ -258,8 +258,8 @@ function render() {
     <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
     <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>
     <div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>
-    <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value">− ${formatSEK(goal)}</span></div>
-    <div class="stat-row" onclick="toggle(this)"><span class="toggle">${currentTab !== 'dag' ? '+' : ''}</span><span class="label">Diff</span><span class="value" style="color:${diffColor}">${formatSEK(diff)}</span></div>
+    <div class="stat-row" onclick="editGoal()" style="border-bottom: 1px solid #e2e8f0;"><span class="toggle"></span><span class="label">Mål</span><span class="value">− ${formatSEK(goal)}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">${currentTab !== 'dag' ? '+' : ''}</span><span class="label">Diff</span><span class="value" style="color:${diffColor}; font-weight:700;">${formatSEK(diff)}</span></div>
     ${diffSubs}
   </div>`;
 
