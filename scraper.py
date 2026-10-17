@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämta saknade detaljer för förare 710022.
+STIG scraper – hämtar data för flera förare.
 """
 
 import os
@@ -11,6 +11,8 @@ from playwright.sync_api import sync_playwright
 STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
 PASSWORD = os.environ.get("STIG_PASSWORD", "")
+
+DRIVERS = ["710022", "844601"]
 
 def login(page):
     page.goto(f"{STIG_URL}/Login.aspx")
@@ -34,7 +36,7 @@ def scrape_day(page, forar_id, date_str):
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(600)
 
     receipts = []
     rows = page.query_selector_all("table tr")
@@ -48,7 +50,7 @@ def scrape_trip_detail(page, kvitto):
     try:
         page.click(f"text={kvitto}")
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(400)
+        page.wait_for_timeout(300)
         detail = page.evaluate("""
             () => {
                 const get = (id) => {
@@ -87,7 +89,7 @@ def fetch_shifts(page, forar_id):
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1200)
+    page.wait_for_timeout(1000)
 
     shifts = []
     rows = page.query_selector_all("table tr")
@@ -100,16 +102,37 @@ def fetch_shifts(page, forar_id):
                 "slut": cells[2],
                 "tid": cells[3],
                 "passnr": cells[8] if len(cells) > 8 else "",
-                "resor": cells[9] if len(cells) > 9 else ""
+                "resor": cells[9] if len(cells) > 9 else "",
+                "forar": forar_id
             })
     return shifts
+
+def scrape_driver(page, forar_id, existing, start_date, today):
+    updated = 0
+    current = start_date
+    while current <= today:
+        date_str = current.strftime("%Y-%m-%d")
+        print(f"  {date_str}...")
+        receipts = scrape_day(page, forar_id, date_str)
+        for kvitto in receipts:
+            if kvitto in existing and not existing[kvitto].get("belopp"):
+                print(f"    Uppdaterar {kvitto}")
+                detail = scrape_trip_detail(page, kvitto)
+                existing[kvitto].update(detail)
+                existing[kvitto]["forar"] = forar_id
+                updated += 1
+            elif kvitto not in existing:
+                print(f"    Ny: {kvitto}")
+                detail = scrape_trip_detail(page, kvitto)
+                existing[kvitto] = {"kvittonr": kvitto, "forar": forar_id, **detail}
+                updated += 1
+        current += timedelta(days=1)
+    return updated
 
 def main():
     if not PASSWORD:
         print("STIG_PASSWORD saknas")
         return
-
-    forar_id = "710022"
 
     try:
         with open("data.json", "r") as f:
@@ -117,13 +140,11 @@ def main():
     except:
         data = {"trips": [], "shifts": []}
 
-    trips = data.get("trips", [])
-    existing = {t.get("kvittonr"): t for t in trips}
+    existing = {t.get("kvittonr"): t for t in data.get("trips", [])}
+    all_shifts = [s for s in data.get("shifts", []) if s.get("forar") not in DRIVERS]
 
     start_date = datetime(2026, 10, 1)
     today = datetime.now()
-
-    print(f"Förare: {forar_id}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -134,43 +155,21 @@ def main():
             browser.close()
             return
 
-        updated = 0
-        current = start_date
-        while current <= today:
-            date_str = current.strftime("%Y-%m-%d")
-            print(f"Söker {date_str}...")
-            receipts = scrape_day(page, forar_id, date_str)
-            for kvitto in receipts:
-                if kvitto in existing and not existing[kvitto].get("belopp"):
-                    print(f"  Uppdaterar {kvitto}")
-                    detail = scrape_trip_detail(page, kvitto)
-                    existing[kvitto].update(detail)
-                    existing[kvitto]["forar"] = forar_id
-                    updated += 1
-                elif kvitto not in existing:
-                    print(f"  Ny: {kvitto}")
-                    detail = scrape_trip_detail(page, kvitto)
-                    existing[kvitto] = {"kvittonr": kvitto, "forar": forar_id, **detail}
-                    updated += 1
-            current += timedelta(days=1)
-
-        print("Hämtar skift...")
-        shifts = fetch_shifts(page, forar_id)
-        for s in shifts:
-            s["forar"] = forar_id
-
-        # Keep other drivers' shifts
-        other_shifts = [s for s in data.get("shifts", []) if s.get("forar") != forar_id]
+        total = 0
+        for forar_id in DRIVERS:
+            print(f"Förare {forar_id}:")
+            total += scrape_driver(page, forar_id, existing, start_date, today)
+            print(f"  Hämtar skift...")
+            all_shifts.extend(fetch_shifts(page, forar_id))
 
         data["trips"] = list(existing.values())
-        data["shifts"] = other_shifts + shifts
+        data["shifts"] = all_shifts
         data["last_updated"] = datetime.utcnow().isoformat() + "Z"
-        data["forar"] = forar_id
 
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"Uppdaterade {updated} körningar")
+        print(f"Totalt {total} uppdateringar")
         browser.close()
 
 if __name__ == "__main__":
