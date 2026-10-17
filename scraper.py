@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämtar nya körningar dag för dag.
+STIG scraper – hämtar körningar dag för dag.
+Börjar från 1 oktober för att bygga databasen.
 -2 kvitton ersätter motsvarande -1.
 """
 
@@ -23,14 +24,6 @@ def login(page):
     page.wait_for_load_state("networkidle")
     return "Login.aspx" not in page.url
 
-def get_latest_date(trips):
-    dates = []
-    for t in trips:
-        d = t.get("startdatum", "")
-        if d and len(d) == 10:
-            dates.append(datetime.strptime(d, "%Y-%m-%d"))
-    return max(dates) if dates else datetime(2026, 10, 1)
-
 def scrape_day(page, forar_id, date_str):
     page.goto(f"{STIG_URL}/Resaposter.aspx")
     page.wait_for_load_state("networkidle")
@@ -43,7 +36,7 @@ def scrape_day(page, forar_id, date_str):
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(800)
 
     receipts = []
     rows = page.query_selector_all("table tr")
@@ -57,7 +50,7 @@ def scrape_trip_detail(page, kvitto):
     try:
         page.click(f"text={kvitto}")
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(400)
         detail = page.evaluate("""
             () => {
                 const get = (id) => {
@@ -96,7 +89,7 @@ def fetch_shifts(page, forar_id):
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1500)
+    page.wait_for_timeout(1200)
 
     shifts = []
     rows = page.query_selector_all("table tr")
@@ -128,12 +121,14 @@ def main():
 
     trips = data.get("trips", [])
     existing_kvitton = {t.get("kvittonr") for t in trips}
-    latest = get_latest_date(trips)
-    start_date = latest + timedelta(days=1)
+
+    # För databasbygge: börja från 1 oktober
+    # Senare: börja från igår
+    start_date = datetime(2026, 10, 1)
     today = datetime.now()
 
-    print(f"Senaste datum: {latest.strftime('%Y-%m-%d')}")
     print(f"Börjar från: {start_date.strftime('%Y-%m-%d')}")
+    print(f"Till: {today.strftime('%Y-%m-%d')}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
