@@ -10,20 +10,17 @@
   <div id="login-screen">
     <div class="login-box">
       <h2>TaxiData</h2>
-      <p>Ange masterlösenord</p>
-      <input type="password" id="password" placeholder="Lösenord" autofocus>
+      <input type="text" id="driver-id" placeholder="Förar-ID" autofocus>
+      <input type="password" id="password" placeholder="Lösenord">
       <button onclick="checkPassword()">Logga in</button>
-      <p id="login-error" style="color:#c53030; display:none;">Fel lösenord</p>
+      <p id="login-error" style="color:#c53030; display:none;">Fel förar-ID eller lösenord</p>
     </div>
   </div>
 
   <div id="app" style="display:none;">
     <header>
       <h1>TaxiData</h1>
-      <select id="driver-select" onchange="changeDriver()">
-        <option value="710022">710022</option>
-        <option value="844601">844601</option>
-      </select>
+      <span id="driver-label"></span>
       <button id="logout" onclick="logout()">Logga ut</button>
     </header>
 
