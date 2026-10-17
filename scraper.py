@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 STIG scraper – hämta ALLA körningar för förare 710022, oktober 2026.
+Hanterar paginering.
 """
 
 import os
@@ -54,6 +55,29 @@ def scrape_trip_detail(page, kvitto):
         print(f"Detalj misslyckades för {kvitto}: {e}")
         return {}
 
+def get_all_receipts(page):
+    receipts = []
+    page_num = 1
+    while True:
+        print(f"Sida {page_num}...")
+        rows = page.query_selector_all("table tr")
+        for row in rows[1:]:
+            cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
+            if len(cells) >= 5 and "-" in cells[4]:
+                receipts.append(cells[4])
+
+        # Check for next page
+        next_btn = page.query_selector("a:has-text('>'), input[value='>'], button:has-text('>')")
+        if not next_btn:
+            break
+        next_btn.click()
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(1000)
+        page_num += 1
+        if page_num > 10:
+            break
+    return receipts
+
 def main():
     if not PASSWORD:
         print("STIG_PASSWORD saknas")
@@ -82,14 +106,8 @@ def main():
         page.click("input[type='submit'], button:has-text('Sök')")
         page.wait_for_load_state("networkidle")
 
-        rows = page.query_selector_all("table tr")
-        receipts = []
-        for row in rows[1:]:
-            cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-            if len(cells) >= 5 and "-" in cells[4]:
-                receipts.append(cells[4])
-
-        print(f"Hittade {len(receipts)} körningar")
+        receipts = get_all_receipts(page)
+        print(f"Totalt {len(receipts)} körningar")
 
         trips = []
         for i, kvitto in enumerate(receipts):
@@ -106,7 +124,7 @@ def main():
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"Sparat {len(trips)} körningar med detaljer")
+        print(f"Sparat {len(trips)} körningar")
         browser.close()
 
 if __name__ == "__main__":
