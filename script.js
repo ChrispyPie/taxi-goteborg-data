@@ -1,7 +1,7 @@
 const MASTER_PASSWORD = 'taxi2026';
 let data = {};
 let currentDate = new Date();
-let currentTab = 'dag';
+let currentTab = localStorage.getItem('taxi_tab') || 'dag';
 let currentDriver = localStorage.getItem('taxi_driver') || '';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
@@ -36,6 +36,7 @@ function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('driver-label').textContent = currentDriver;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentTab));
   loadData().then(render);
 }
 
@@ -82,6 +83,13 @@ function getWeekNumber(d) {
 
 function isToday(d) {
   return d.toDateString() === new Date().toDateString();
+}
+
+function isCurrentPeriod() {
+  const now = new Date();
+  if (currentTab === 'dag') return isToday(currentDate);
+  if (currentTab === 'vecka') return getWeekNumber(currentDate) === getWeekNumber(now) && currentDate.getFullYear() === now.getFullYear();
+  return currentDate.getMonth() === now.getMonth() && currentDate.getFullYear() === now.getFullYear();
 }
 
 function formatSEK(n) {
@@ -194,6 +202,7 @@ function formatShiftDate(str) {
 
 function render() {
   const isTodayNow = isToday(currentDate);
+  const isCurrent = isCurrentPeriod();
   const dateEl = document.getElementById('current-date');
   const yy = String(currentDate.getFullYear()).slice(-2);
   
@@ -210,6 +219,8 @@ function render() {
   }
   
   document.getElementById('today').classList.toggle('active', isTodayNow && currentTab === 'dag');
+  document.getElementById('next').disabled = isCurrent;
+  document.getElementById('next').style.opacity = isCurrent ? '0.3' : '1';
 
   if (data.last_updated) {
     const d = new Date(data.last_updated);
@@ -380,6 +391,7 @@ document.querySelectorAll('.tab').forEach(btn => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     currentTab = btn.dataset.tab;
+    localStorage.setItem('taxi_tab', currentTab);
     render();
   });
 });
@@ -391,6 +403,7 @@ document.getElementById('prev').onclick = () => {
   render();
 };
 document.getElementById('next').onclick = () => {
+  if (isCurrentPeriod()) return;
   if (currentTab === 'vecka') currentDate.setDate(currentDate.getDate() + 7);
   else if (currentTab === 'manad') currentDate.setMonth(currentDate.getMonth() + 1);
   else currentDate.setDate(currentDate.getDate() + 1);
