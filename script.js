@@ -8,6 +8,7 @@ const goals = { dag: 4000, vecka: 25000, manad: 100000 };
 const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber', '161': 'Faktura', '185': 'Övrigt', '999': 'BOM' };
 const weekdays = ['Sö', 'Må', 'Ti', 'On', 'To', 'Fr', 'Lö'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+const UBER_FEE = 0.26;
 
 async function loadData() {
   try {
@@ -247,27 +248,28 @@ function render() {
   });
 
   const trips = allTrips.filter(t => t.kredittyp !== '999');
-  const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
-  const krPerKorning = antal ? Math.round(inkort / antal) : 0;
   const totalKm = trips.reduce((s, t) => s + parseAmount(t.kilometer), 0);
-  const krPerMil = totalKm ? Math.round(inkort / (totalKm / 10)) : 0;
-  const goal = goals[currentTab] || 4000;
-  const diff = inkort - goal;
   const arbetad = formatTime(totalMinutes);
-  const krPerTimme = totalMinutes ? Math.round(inkort / (totalMinutes / 60)) : 0;
   const antalSkift = shifts.length;
 
   const kort = sumByType(trips, '160');
   const kredit = sumByType(trips, '283');
   const swish = sumByType(trips, '163');
   const kontant = sumByType(trips, '1');
-  const uber = sumByType(trips, '164');
+  const uberGross = sumByType(trips, '164');
+  const uberNetto = uberGross * (1 - UBER_FEE);
   const faktura = sumByType(trips, '161');
   const ovrigt = sumByType(trips, '185');
   const bom = sumByType(allTrips, '999');
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
+  const inkort = kort + kredit + swish + kontant + uberNetto + faktura + ovrigt;
+  const krPerKorning = antal ? Math.round(inkort / antal) : 0;
+  const krPerMil = totalKm ? Math.round(inkort / (totalKm / 10)) : 0;
+  const krPerTimme = totalMinutes ? Math.round(inkort / (totalMinutes / 60)) : 0;
+  const goal = goals[currentTab] || 4000;
+  const diff = inkort - goal;
   const inkortPerSkift = antalSkift ? Math.round(inkort / antalSkift) : 0;
   const remaining = Math.max(0, goal - inkort);
   const remainingDays = currentTab === 'manad' ? getRemainingDays(currentDate) : 0;
@@ -299,13 +301,14 @@ function render() {
   let paymentSubs = `
     <div class="sub"><span>Kort</span><span>${formatSEK(kort)}</span></div>
     <div class="sub"><span>Kredit</span><span>${formatSEK(kredit)}</span></div>
-    <div class="sub"><span>Uber</span><span>${formatSEK(uber)}</span></div>
+    <div class="sub" style="opacity:0.5;"><span>Uber</span><span>${formatSEK(uberGross)}</span></div>
+    <div class="sub"><span>Uber netto</span><span>${formatSEK(uberNetto)}</span></div>
     <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
     <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>`;
   if (faktura > 0) paymentSubs += `<div class="sub"><span>Faktura</span><span>${formatSEK(faktura)}</span></div>`;
   if (ovrigt > 0) paymentSubs += `<div class="sub"><span>Övrigt</span><span>${formatSEK(ovrigt)}</span></div>`;
   if (bom > 0) paymentSubs += `<div class="sub" style="opacity:0.5;"><span>BOM</span><span>${formatSEK(bom)}</span></div>`;
-  paymentSubs += `<div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>`;
+  if (dricks > 0) paymentSubs += `<div class="sub" style="opacity:0.5;"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>`;
 
   let html = `<div class="section">
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
@@ -337,7 +340,9 @@ function render() {
     if (shifts.length) {
       html += `<div class="section">${shifts.map(s => {
         const shiftTrips = getTripsForShift(s);
-        const shiftInkort = shiftTrips.filter(t => t.kredittyp !== '999').reduce((sum, t) => sum + parseAmount(t.belopp), 0);
+        const shiftUber = shiftTrips.filter(t => t.kredittyp === '164').reduce((sum, t) => sum + parseAmount(t.belopp), 0);
+        const shiftOther = shiftTrips.filter(t => t.kredittyp !== '999' && t.kredittyp !== '164').reduce((sum, t) => sum + parseAmount(t.belopp), 0);
+        const shiftInkort = shiftOther + shiftUber * (1 - UBER_FEE);
         const dateLabel = formatShiftDate(s.start);
         const tripsHtml = shiftTrips.map(t => {
           const isBom = t.kredittyp === '999';
