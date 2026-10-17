@@ -20,6 +20,11 @@
   <div id="app" style="display:none;">
     <header>
       <h1>TaxiData</h1>
+      <select id="driver-select" onchange="changeDriver()">
+        <option value="710022">710022</option>
+        <option value="844601">844601</option>
+      </select>
+      <button id="logout" onclick="logout()">Logga ut</button>
     </header>
 
     <div class="controls">
