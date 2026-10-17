@@ -1,0 +1,39 @@
+name: Import Monthly
+
+on:
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Month to import (YYYY-MM)'
+        required: true
+        default: '2026-09'
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: pip install playwright && playwright install chromium
+      
+      - name: Run import
+        env:
+          STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
+          STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+        run: python import_monthly.py
+      
+      - name: Copy to gh-pages
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git fetch origin gh-pages
+          git checkout gh-pages
+          git checkout main -- data.json
+          git add data.json
+          git commit -m "Import monthly data" || echo "No changes"
+          git push origin gh-pages
