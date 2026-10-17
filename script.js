@@ -5,7 +5,7 @@ let currentTab = localStorage.getItem('taxi_tab') || 'dag';
 let currentDriver = localStorage.getItem('taxi_driver') || '';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
-const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber', '999': 'BOM' };
+const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber', '161': 'Faktura', '185': 'Övrigt', '999': 'BOM' };
 const weekdays = ['Sö', 'Må', 'Ti', 'On', 'To', 'Fr', 'Lö'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
 
@@ -262,6 +262,9 @@ function render() {
   const kredit = sumByType(trips, '283');
   const swish = sumByType(trips, '163');
   const kontant = sumByType(trips, '1');
+  const uber = sumByType(trips, '164');
+  const faktura = sumByType(trips, '161');
+  const ovrigt = sumByType(trips, '185');
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
   const inkortPerSkift = antalSkift ? Math.round(inkort / antalSkift) : 0;
@@ -292,6 +295,16 @@ function render() {
       <div class="sub"><span>Behov/dag</span><span>${formatSEK(behovPerSkift)}</span></div>`;
   }
 
+  let paymentSubs = `
+    <div class="sub"><span>Kort</span><span>${formatSEK(kort)}</span></div>
+    <div class="sub"><span>Kredit</span><span>${formatSEK(kredit)}</span></div>
+    <div class="sub"><span>Uber</span><span>${formatSEK(uber)}</span></div>
+    <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
+    <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>`;
+  if (faktura > 0) paymentSubs += `<div class="sub"><span>Faktura</span><span>${formatSEK(faktura)}</span></div>`;
+  if (ovrigt > 0) paymentSubs += `<div class="sub"><span>Övrigt</span><span>${formatSEK(ovrigt)}</span></div>`;
+  paymentSubs += `<div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>`;
+
   let html = `<div class="section">
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
     ${timmarSubs}
@@ -300,11 +313,7 @@ function render() {
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal} st</span></div>
     <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Inkört</span><span class="value">${formatSEK(inkort)}</span></div>
-    <div class="sub"><span>Kort</span><span>${formatSEK(kort)}</span></div>
-    <div class="sub"><span>Kredit</span><span>${formatSEK(kredit)}</span></div>
-    <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
-    <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>
-    <div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>
+    ${paymentSubs}
     <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value" style="border-bottom: 1px solid #cbd5e0; padding-bottom: 2px;">− ${formatSEK(goal)}</span></div>
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">${currentTab !== 'dag' ? '+' : ''}</span><span class="label">Diff</span><span class="value" style="color:${diffColor}; font-weight:700;">${formatSEK(diff)}</span></div>
     ${diffSubs}
