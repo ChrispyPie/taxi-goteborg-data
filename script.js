@@ -202,6 +202,8 @@ function render() {
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
   const arbetad = totalMinutes ? formatTime(totalMinutes) : '—';
+  const krPerTimme = totalMinutes ? Math.round(inkort / (totalMinutes / 60)) : 0;
+  const antalSkift = shifts.length;
 
   const kort = sumByType(trips, '160');
   const kredit = sumByType(trips, '283');
@@ -209,8 +211,24 @@ function render() {
   const kontant = sumByType(trips, '1');
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
+  let timmarSubs = '';
+  if (currentTab === 'dag' && !isTodayNow && shifts.length) {
+    const s = shifts[0];
+    const startTid = s.start.split(' ')[1] || '—';
+    const slutTid = s.slut.split(' ')[1] || '—';
+    timmarSubs = `
+      <div class="sub"><span>Start</span><span>${startTid}</span></div>
+      <div class="sub"><span>Slut</span><span>${slutTid}</span></div>
+      <div class="sub"><span>Kr/timme</span><span>${formatSEK(krPerTimme)}</span></div>`;
+  } else if (currentTab !== 'dag') {
+    timmarSubs = `
+      <div class="sub"><span>Antal skift</span><span>${antalSkift}</span></div>
+      <div class="sub"><span>Kr/timme</span><span>${formatSEK(krPerTimme)}</span></div>`;
+  }
+
   let html = `<div class="section">
-    <div class="stat-row"><span class="toggle"></span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
+    ${timmarSubs}
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">${totalKm ? totalKm.toFixed(1) : '—'}</span></div>
     <div class="sub"><span>Kr/mil</span><span>${formatSEK(krPerMil)}</span></div>
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal || '—'}</span></div>
