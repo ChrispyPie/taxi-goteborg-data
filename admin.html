@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – TaxiData</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #e8f4fc; color: #1a365d; }
+    header { background: #bee3f8; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 18px; flex: 1; }
+    button { background: white; border: 1px solid #1a365d; color: #1a365d; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #1a365d; color: white; }
+    button.active { background: #1a365d; color: white; }
+    #content { padding: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
+    .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
+    .icon:hover { border-color: #1a365d; }
+    .icon .emoji { font-size: 32px; margin-bottom: 8px; }
+    .icon .label { font-size: 13px; }
+    .list-item { background: white; border: 1px solid #cbd5e0; border-radius: 4px; margin-bottom: 4px; }
+    .list-row { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .list-row:hover { background: #f7fafc; }
+    .list-row .emoji { font-size: 20px; }
+    .sub { padding: 8px 16px 8px 48px; border-top: 1px solid #edf2f7; cursor: pointer; }
+    .sub:hover { background: #f7fafc; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="back" class="hidden">←</button>
+    <button id="home">🏠</button>
+    <h1 id="title">Admin</h1>
+    <button id="toggle-view">Ikoner</button>
+  </header>
+  <div id="content"></div>
+
+  <script>
+    const menu = [
+      { id: 'oversikt', icon: '📊', label: 'Översikt', items: ['Idag', 'Vecka', 'Månad'] },
+      { id: 'chaufforer', icon: '👥', label: 'Chaufförer', items: ['Lista', 'Aktivera/Inaktivera'] },
+      { id: 'losenord', icon: '🔑', label: 'Lösenord', items: ['Sätt lösenord', 'Återställ'] },
+      { id: 'scraping', icon: '🔄', label: 'Scraping', items: ['Kör nu', 'Status'] },
+      { id: 'statistik', icon: '📈', label: 'Statistik', items: ['Topplistor', 'Zoner'] }
+    ];
+
+    let view = localStorage.getItem('admin_view') || 'grid';
+    let current = null;
+
+    function render() {
+      const content = document.getElementById('content');
+      const title = document.getElementById('title');
+      const back = document.getElementById('back');
+      const toggle = document.getElementById('toggle-view');
+
+      toggle.textContent = view === 'grid' ? 'Lista' : 'Ikoner';
+      toggle.classList.toggle('active', view === 'list');
+
+      if (current) {
+        const item = menu.find(m => m.id === current);
+        title.textContent = item.label;
+        back.classList.remove('hidden');
+        content.innerHTML = `<div class="grid">${item.items.map(i => `
+          <div class="icon"><div class="emoji">📄</div><div class="label">${i}</div></div>
+        `).join('')}</div>`;
+      } else {
+        title.textContent = 'Admin';
+        back.classList.add('hidden');
+        if (view === 'grid') {
+          content.innerHTML = `<div class="grid">${menu.map(m => `
+            <div class="icon" onclick="openMenu('${m.id}')">
+              <div class="emoji">${m.icon}</div>
+              <div class="label">${m.label}</div>
+            </div>
+          `).join('')}</div>`;
+        } else {
+          content.innerHTML = menu.map(m => `
+            <div class="list-item">
+              <div class="list-row" onclick="toggleSub('${m.id}')">
+                <span class="emoji">${m.icon}</span>
+                <span>${m.label}</span>
+              </div>
+              <div id="sub-${m.id}" class="hidden">
+                ${m.items.map(i => `<div class="sub">${i}</div>`).join('')}
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    function openMenu(id) { current = id; render(); }
+    function goHome() { current = null; render(); }
+    function goBack() { current = null; render(); }
+    function toggleSub(id) {
+      document.getElementById('sub-' + id).classList.toggle('hidden');
+    }
+    function toggleView() {
+      view = view === 'grid' ? 'list' : 'grid';
+      localStorage.setItem('admin_view', view);
+      render();
+    }
+
+    document.getElementById('home').onclick = goHome;
+    document.getElementById('back').onclick = goBack;
+    document.getElementById('toggle-view').onclick = toggleView;
+    render();
+  </script>
+</body>
+</html>
