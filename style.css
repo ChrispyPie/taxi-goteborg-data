@@ -6,8 +6,27 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #e8f1f8; c
 .login-box input, .login-box button { width: 100%; padding: 0.7rem; margin-top: 0.5rem; border-radius: 6px; border: 1px solid #ccc; }
 .login-box button { background: #1a365d; color: white; border: none; }
 
-header { background: #e8f1f8; color: #1a365d; padding: 1.2rem; text-align: center; border-bottom: 1px solid #d0e0ea; }
-header h1 { font-size: 1.3rem; }
+header {
+  background: #e8f1f8;
+  color: #1a365d;
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #d0e0ea;
+  gap: 0.5rem;
+}
+header h1 { font-size: 1.1rem; }
+header select, header button {
+  background: white;
+  border: 2px solid #1a365d;
+  color: #1a365d;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+header button { cursor: pointer; }
+header button:hover { background: #1a365d; color: white; }
 
 .controls { background: #e8f1f8; padding: 1rem; }
 
