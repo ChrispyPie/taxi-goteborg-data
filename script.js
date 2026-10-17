@@ -2,6 +2,7 @@ const MASTER_PASSWORD = 'taxi2026';
 let data = {};
 let currentDate = new Date();
 let currentTab = 'dag';
+let currentDriver = localStorage.getItem('taxi_driver') || '710022';
 
 const goals = { dag: 4000, vecka: 25000, manad: 100000 };
 const typeMap = { '160': 'Kort', '283': 'Kredit', '163': 'Swish', '1': 'Kontant', '164': 'Uber', '999': 'BOM' };
@@ -18,6 +19,7 @@ async function loadData() {
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  document.getElementById('driver-select').value = currentDriver;
   loadData().then(render);
 }
 
@@ -28,6 +30,19 @@ function checkPassword() {
   } else {
     document.getElementById('login-error').style.display = 'block';
   }
+}
+
+function logout() {
+  localStorage.removeItem('taxi_logged_in');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('password').value = '';
+}
+
+function changeDriver() {
+  currentDriver = document.getElementById('driver-select').value;
+  localStorage.setItem('taxi_driver', currentDriver);
+  render();
 }
 
 if (localStorage.getItem('taxi_logged_in') === '1') showApp();
@@ -54,7 +69,11 @@ function parseAmount(str) {
 
 function getShiftForDate(date) {
   const ymd = date.toISOString().slice(0,10).replace(/-/g, '');
-  return (data.shifts || []).find(s => (s.start || '').replace(/\s/g, '').startsWith(ymd));
+  return (data.shifts || []).find(s => {
+    const start = (s.start || '').replace(/\s/g, '');
+    const forar = s.forar || '710022';
+    return start.startsWith(ymd) && forar === currentDriver;
+  });
 }
 
 function getTripsForShift(shift) {
@@ -63,7 +82,8 @@ function getTripsForShift(shift) {
   const endDate = (shift.slut || '').split(' ')[0];
   return (data.trips || []).filter(t => {
     const td = (t.startdatum || '').replace(/-/g, '');
-    return td === startDate || td === endDate;
+    const forar = t.forar || '710022';
+    return (td === startDate || td === endDate) && forar === currentDriver;
   });
 }
 
