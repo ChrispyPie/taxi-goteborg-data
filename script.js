@@ -265,6 +265,7 @@ function render() {
   const uber = sumByType(trips, '164');
   const faktura = sumByType(trips, '161');
   const ovrigt = sumByType(trips, '185');
+  const bom = sumByType(allTrips, '999');
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
   const inkortPerSkift = antalSkift ? Math.round(inkort / antalSkift) : 0;
@@ -303,6 +304,7 @@ function render() {
     <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>`;
   if (faktura > 0) paymentSubs += `<div class="sub"><span>Faktura</span><span>${formatSEK(faktura)}</span></div>`;
   if (ovrigt > 0) paymentSubs += `<div class="sub"><span>Övrigt</span><span>${formatSEK(ovrigt)}</span></div>`;
+  if (bom > 0) paymentSubs += `<div class="sub" style="opacity:0.5;"><span>BOM</span><span>${formatSEK(bom)}</span></div>`;
   paymentSubs += `<div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>`;
 
   let html = `<div class="section">
