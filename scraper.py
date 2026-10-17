@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 STIG scraper – hämta ALLA körningar för förare 710022, oktober 2026.
-Hanterar paginering.
 """
 
 import os
@@ -27,7 +26,7 @@ def scrape_trip_detail(page, kvitto):
     try:
         page.click(f"text={kvitto}")
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(600)
 
         detail = page.evaluate("""
             () => {
@@ -58,7 +57,7 @@ def scrape_trip_detail(page, kvitto):
 def get_all_receipts(page):
     receipts = []
     page_num = 1
-    while True:
+    while page_num <= 5:
         print(f"Sida {page_num}...")
         rows = page.query_selector_all("table tr")
         for row in rows[1:]:
@@ -66,16 +65,13 @@ def get_all_receipts(page):
             if len(cells) >= 5 and "-" in cells[4]:
                 receipts.append(cells[4])
 
-        # Check for next page
-        next_btn = page.query_selector("a:has-text('>'), input[value='>'], button:has-text('>')")
-        if not next_btn:
+        next_btn = page.query_selector("#MainContent_next")
+        if not next_btn or not next_btn.is_visible():
             break
         next_btn.click()
         page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(1500)
         page_num += 1
-        if page_num > 10:
-            break
     return receipts
 
 def main():
