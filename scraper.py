@@ -141,7 +141,18 @@ def main():
         data = {"trips": [], "shifts": []}
 
     existing = {t.get("kvittonr"): t for t in data.get("trips", [])}
-    all_shifts = [s for s in data.get("shifts", []) if s.get("forar") not in DRIVERS]
+
+    # Keep shifts for drivers NOT in DRIVERS list, and dedupe by passnr+forar
+    seen = set()
+    all_shifts = []
+    for s in data.get("shifts", []):
+        forar = s.get("forar") or "710022"
+        if forar not in DRIVERS:
+            key = (s.get("passnr"), forar)
+            if key not in seen:
+                seen.add(key)
+                s["forar"] = forar
+                all_shifts.append(s)
 
     start_date = datetime(2026, 10, 1)
     today = datetime.now()
@@ -160,7 +171,12 @@ def main():
             print(f"Förare {forar_id}:")
             total += scrape_driver(page, forar_id, existing, start_date, today)
             print(f"  Hämtar skift...")
-            all_shifts.extend(fetch_shifts(page, forar_id))
+            new_shifts = fetch_shifts(page, forar_id)
+            for s in new_shifts:
+                key = (s.get("passnr"), forar_id)
+                if key not in seen:
+                    seen.add(key)
+                    all_shifts.append(s)
 
         data["trips"] = list(existing.values())
         data["shifts"] = all_shifts
@@ -169,7 +185,7 @@ def main():
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"Totalt {total} uppdateringar")
+        print(f"Totalt {total} uppdateringar, {len(all_shifts)} skift")
         browser.close()
 
 if __name__ == "__main__":
