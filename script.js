@@ -185,6 +185,13 @@ function formatTime(minutes) {
   return h + ':' + String(m).padStart(2, '0');
 }
 
+function formatShiftDate(str) {
+  const parts = (str || '').split(' ');
+  if (!parts[0] || parts[0].length < 8) return '';
+  const d = parts[0];
+  return d.slice(6,8) + '/' + d.slice(4,6);
+}
+
 function render() {
   const isTodayNow = isToday(currentDate);
   const dateEl = document.getElementById('current-date');
@@ -219,17 +226,13 @@ function render() {
     shifts = getShiftsInRange(getMonthStart(currentDate), getMonthEnd(currentDate));
   }
 
+  shifts.sort((a, b) => (b.start || '').localeCompare(a.start || ''));
+
   let allTrips = [];
   let totalMinutes = 0;
   shifts.forEach(s => {
     allTrips = allTrips.concat(getTripsForShift(s));
     totalMinutes += parseTime(s.tid);
-  });
-
-  allTrips.sort((a, b) => {
-    const da = (a.startdatum || '') + (a.starttid || '');
-    const db = (b.startdatum || '') + (b.starttid || '');
-    return db.localeCompare(da);
   });
 
   const trips = allTrips.filter(t => t.kredittyp !== '999');
@@ -251,8 +254,6 @@ function render() {
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
   const inkortPerSkift = antalSkift ? Math.round(inkort / antalSkift) : 0;
-  
-  // Behov = remaining amount / remaining days (only if under goal)
   const remaining = Math.max(0, goal - inkort);
   const remainingDays = currentTab === 'manad' ? getRemainingDays(currentDate) : 0;
   const behovPerSkift = remainingDays > 0 ? Math.round(remaining / remainingDays) : 0;
@@ -298,17 +299,36 @@ function render() {
     ${diffSubs}
   </div>`;
 
-  if (allTrips.length) {
-    html += `<div class="section">${allTrips.map(t => {
-      const isBom = t.kredittyp === '999';
-      const dateLabel = currentTab !== 'dag' && t.startdatum ? t.startdatum.slice(5) + ' ' : '';
-      return `<div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}"><span class="toggle">+</span><span class="label">${dateLabel}${t.kvittonr}${isBom ? ' (BOM)' : ''}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>
-      <div class="sub"><span>Start</span><span>${t.starttid || '00:00'} – zon ${t.startzon || '?'}</span></div>
-      <div class="sub"><span>Slut</span><span>${t.sluttid || '00:00'} – zon ${t.slutzon || '?'}</span></div>
-      <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
-      <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '?'}</span></div>
-      <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>`;
-    }).join('')}</div>`;
+  if (currentTab === 'dag') {
+    if (allTrips.length) {
+      html += `<div class="section">${allTrips.map(t => {
+        const isBom = t.kredittyp === '999';
+        return `<div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}"><span class="toggle">+</span><span class="label">${t.kvittonr}${isBom ? ' (BOM)' : ''}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>
+        <div class="sub"><span>Start</span><span>${t.starttid || '00:00'} – zon ${t.startzon || '?'}</span></div>
+        <div class="sub"><span>Slut</span><span>${t.sluttid || '00:00'} – zon ${t.slutzon || '?'}</span></div>
+        <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
+        <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '?'}</span></div>
+        <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>`;
+      }).join('')}</div>`;
+    }
+  } else {
+    if (shifts.length) {
+      html += `<div class="section">${shifts.map(s => {
+        const shiftTrips = getTripsForShift(s);
+        const shiftInkort = shiftTrips.filter(t => t.kredittyp !== '999').reduce((sum, t) => sum + parseAmount(t.belopp), 0);
+        const dateLabel = formatShiftDate(s.start);
+        const tripsHtml = shiftTrips.map(t => {
+          const isBom = t.kredittyp === '999';
+          return `<div class="sub shift-trip" onclick="toggleTrip(this)" style="${isBom ? 'opacity:0.6;' : ''}"><span class="toggle">+</span><span>${t.kvittonr}${isBom ? ' (BOM)' : ''}</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
+          <div class="sub trip-detail"><span>Start</span><span>${t.starttid || '00:00'} – zon ${t.startzon || '?'}</span></div>
+          <div class="sub trip-detail"><span>Slut</span><span>${t.sluttid || '00:00'} – zon ${t.slutzon || '?'}</span></div>
+          <div class="sub trip-detail"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '?'}</span></div>
+          <div class="sub trip-detail"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>`;
+        }).join('');
+        return `<div class="stat-row" onclick="toggleShift(this)"><span class="toggle">+</span><span class="label">${dateLabel} #${s.passnr}</span><span class="value">${formatSEK(shiftInkort)}</span></div>
+        <div class="shift-content">${tripsHtml}</div>`;
+      }).join('')}</div>`;
+    }
   }
 
   document.getElementById('dashboard').innerHTML = html;
@@ -320,6 +340,28 @@ function toggle(el) {
   if (icon && icon.textContent) icon.textContent = isOpen ? '−' : '+';
   let next = el.nextElementSibling;
   while (next && next.classList.contains('sub')) {
+    next.classList.toggle('visible', isOpen);
+    next = next.nextElementSibling;
+  }
+}
+
+function toggleShift(el) {
+  const isOpen = el.classList.toggle('open');
+  const icon = el.querySelector('.toggle');
+  if (icon) icon.textContent = isOpen ? '−' : '+';
+  const content = el.nextElementSibling;
+  if (content && content.classList.contains('shift-content')) {
+    content.style.display = isOpen ? 'block' : 'none';
+  }
+}
+
+function toggleTrip(el) {
+  event.stopPropagation();
+  const isOpen = el.classList.toggle('open');
+  const icon = el.querySelector('.toggle');
+  if (icon) icon.textContent = isOpen ? '−' : '+';
+  let next = el.nextElementSibling;
+  while (next && next.classList.contains('trip-detail')) {
     next.classList.toggle('visible', isOpen);
     next = next.nextElementSibling;
   }
