@@ -57,7 +57,15 @@ document.getElementById('driver-id').addEventListener('keypress', e => {
 });
 
 function formatDate(d) {
-  return d.toLocaleDateString('sv-SE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return d.toLocaleDateString('sv-SE', { day: '2-digit', month: '2-digit' });
+}
+
+function getWeekNumber(d) {
+  const date = new Date(d);
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
 }
 
 function isToday(d) {
@@ -158,17 +166,17 @@ function formatTime(minutes) {
 
 function render() {
   const isTodayNow = isToday(currentDate);
-  let label = formatDate(currentDate);
-  if (currentTab === 'dag' && isTodayNow) label = 'Idag';
-  if (currentTab === 'vecka') {
-    const ws = getWeekStart(currentDate);
-    const we = getWeekEnd(currentDate);
-    label = formatDate(ws) + ' – ' + formatDate(we);
+  const dateEl = document.getElementById('current-date');
+  
+  if (currentTab === 'dag') {
+    dateEl.textContent = isTodayNow ? 'Idag' : formatDate(currentDate);
+  } else if (currentTab === 'vecka') {
+    const wn = getWeekNumber(currentDate);
+    dateEl.textContent = 'Vecka ' + wn;
+  } else {
+    dateEl.textContent = currentDate.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
   }
-  if (currentTab === 'manad') {
-    label = currentDate.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' });
-  }
-  document.getElementById('current-date').textContent = label;
+  
   document.getElementById('today').classList.toggle('active', isTodayNow && currentTab === 'dag');
 
   if (data.last_updated) {
