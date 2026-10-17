@@ -219,6 +219,10 @@ function render() {
   const kontant = sumByType(trips, '1');
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
+  const inkortPerSkift = antalSkift ? Math.round(inkort / antalSkift) : 0;
+  const behovPerSkift = antalSkift ? Math.round(goal / antalSkift) : 0;
+  const diffColor = diff >= 0 ? '#38a169' : '#e53e3e';
+
   let timmarSubs = '';
   if (currentTab === 'dag' && !isTodayNow && shifts.length) {
     const s = shifts[0];
@@ -234,6 +238,13 @@ function render() {
       <div class="sub"><span>Kr/timme</span><span>${formatSEK(krPerTimme)}</span></div>`;
   }
 
+  let diffSubs = '';
+  if (currentTab !== 'dag' && antalSkift > 0) {
+    diffSubs = `
+      <div class="sub"><span>Inkört/skift</span><span>${formatSEK(inkortPerSkift)}</span></div>
+      <div class="sub"><span>Behov/skift</span><span>${formatSEK(behovPerSkift)}</span></div>`;
+  }
+
   let html = `<div class="section">
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
     ${timmarSubs}
@@ -247,8 +258,9 @@ function render() {
     <div class="sub"><span>Kontant</span><span>${formatSEK(kontant)}</span></div>
     <div class="sub"><span>Swish</span><span>${formatSEK(swish)}</span></div>
     <div class="sub"><span>Dricks</span><span>${formatSEK(dricks)}</span></div>
-    <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value">${formatSEK(goal)}</span></div>
-    <div class="stat-row"><span class="toggle"></span><span class="label">Diff</span><span class="value">${formatSEK(diff)}</span></div>
+    <div class="stat-row" onclick="editGoal()"><span class="toggle"></span><span class="label">Mål</span><span class="value">− ${formatSEK(goal)}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">${currentTab !== 'dag' ? '+' : ''}</span><span class="label">Diff</span><span class="value" style="color:${diffColor}">${formatSEK(diff)}</span></div>
+    ${diffSubs}
   </div>`;
 
   if (currentTab === 'dag' && allTrips.length) {
@@ -269,7 +281,7 @@ function render() {
 function toggle(el) {
   const isOpen = el.classList.toggle('open');
   const icon = el.querySelector('.toggle');
-  if (icon) icon.textContent = isOpen ? '−' : '+';
+  if (icon && icon.textContent) icon.textContent = isOpen ? '−' : '+';
   let next = el.nextElementSibling;
   while (next && next.classList.contains('sub')) {
     next.classList.toggle('visible', isOpen);
