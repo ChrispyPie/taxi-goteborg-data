@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämtar nya körningar dag för dag från senaste sparade.
+STIG scraper – hämtar nya körningar dag för dag.
+-2 kvitton ersätter motsvarande -1.
 """
 
 import os
@@ -125,8 +126,9 @@ def main():
     except:
         data = {"trips": [], "shifts": []}
 
-    existing_kvitton = {t.get("kvittonr") for t in data.get("trips", [])}
-    latest = get_latest_date(data.get("trips", []))
+    trips = data.get("trips", [])
+    existing_kvitton = {t.get("kvittonr") for t in trips}
+    latest = get_latest_date(trips)
     start_date = latest + timedelta(days=1)
     today = datetime.now()
 
@@ -143,13 +145,21 @@ def main():
             return
 
         new_trips = []
+        replaced = 0
         current = start_date
         while current <= today:
             date_str = current.strftime("%Y-%m-%d")
             print(f"Söker {date_str}...")
             receipts = scrape_day(page, forar_id, date_str)
             for kvitto in receipts:
-                if kvitto not in existing_kvitton:
+                if kvitto.endswith("-02"):
+                    base = kvitto[:-3] + "-01"
+                    trips = [t for t in trips if t.get("kvittonr") != base]
+                    print(f"  Ersätter {base} med {kvitto}")
+                    detail = scrape_trip_detail(page, kvitto)
+                    trips.append({"kvittonr": kvitto, **detail})
+                    replaced += 1
+                elif kvitto not in existing_kvitton:
                     print(f"  Hämtar {kvitto}")
                     detail = scrape_trip_detail(page, kvitto)
                     new_trips.append({"kvittonr": kvitto, **detail})
@@ -159,7 +169,7 @@ def main():
         print("Hämtar skift...")
         shifts = fetch_shifts(page, forar_id)
 
-        data["trips"] = data.get("trips", []) + new_trips
+        data["trips"] = trips + new_trips
         data["shifts"] = shifts
         data["last_updated"] = datetime.utcnow().isoformat() + "Z"
         data["forar"] = forar_id
@@ -167,7 +177,7 @@ def main():
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"Lade till {len(new_trips)} nya körningar")
+        print(f"Lade till {len(new_trips)} nya, ersatte {replaced}")
         browser.close()
 
 if __name__ == "__main__":
