@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       
       - uses: actions/setup-python@v5
         with:
@@ -28,12 +30,18 @@ jobs:
           IMPORT_MONTH: ${{ inputs.month }}
         run: python import_monthly.py
       
-      - name: Copy to gh-pages
+      - name: Commit to main
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+          git add data.json
+          git commit -m "Import ${{ inputs.month }}" || echo "No changes"
+          git push origin main
+      
+      - name: Copy to gh-pages
+        run: |
           git fetch origin gh-pages
-          git checkout gh-pages
+          git checkout -B gh-pages origin/gh-pages
           git checkout main -- data.json
           git add data.json
           git commit -m "Import ${{ inputs.month }}" || echo "No changes"
