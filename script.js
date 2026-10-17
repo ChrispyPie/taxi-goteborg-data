@@ -68,7 +68,7 @@ function getTripsForShift(shift) {
 }
 
 function sumByType(trips, typeCode) {
-  return trips.filter(t => t.kredittyp === typeCode && t.kredittyp !== '999').reduce((s, t) => s + parseAmount(t.belopp), 0);
+  return trips.filter(t => t.kredittyp === typeCode).reduce((s, t) => s + parseAmount(t.belopp), 0);
 }
 
 function render() {
@@ -84,7 +84,6 @@ function render() {
   const shift = getShiftForDate(currentDate);
   const allTrips = getTripsForShift(shift);
   const trips = allTrips.filter(t => t.kredittyp !== '999');
-  const bomTrips = allTrips.filter(t => t.kredittyp === '999');
 
   const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
   const antal = trips.length;
@@ -107,14 +106,14 @@ function render() {
   const tripList = allTrips.map(t => {
     const isBom = t.kredittyp === '999';
     return `
-    <div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.5;' : ''}">
+    <div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}">
       <span class="toggle">+</span>
       <span class="label">${t.kvittonr}${isBom ? ' (BOM)' : ''}</span>
-      <span class="value">${isBom ? '—' : formatSEK(parseAmount(t.belopp))}</span>
+      <span class="value">${formatSEK(parseAmount(t.belopp))}</span>
     </div>
     <div class="sub"><span>Start</span><span>${t.starttid} – zon ${t.startzon || '?'}</span></div>
     <div class="sub"><span>Slut</span><span>${t.sluttid} – zon ${t.slutzon || '?'}</span></div>
-    <div class="sub"><span>Betalt</span><span>${isBom ? '—' : formatSEK(parseAmount(t.belopp))}</span></div>
+    <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
     <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '—'}</span></div>
     <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>
   `;
