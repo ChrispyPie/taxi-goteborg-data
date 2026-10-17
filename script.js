@@ -72,6 +72,14 @@ function parseAmount(str) {
   return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0;
 }
 
+function parseShiftTime(str) {
+  const parts = (str || '').split(' ');
+  if (parts.length < 2) return null;
+  const d = parts[0];
+  const t = parts[1].replace(/ /g, '');
+  return new Date(d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8) + 'T' + t);
+}
+
 function getShiftForDate(date) {
   const ymd = date.toISOString().slice(0,10).replace(/-/g, '');
   return (data.shifts || []).find(s => {
@@ -83,12 +91,18 @@ function getShiftForDate(date) {
 
 function getTripsForShift(shift) {
   if (!shift) return [];
-  const startDate = (shift.start || '').split(' ')[0];
-  const endDate = (shift.slut || '').split(' ')[0];
+  const shiftStart = parseShiftTime(shift.start);
+  const shiftEnd = parseShiftTime(shift.slut);
+  if (!shiftStart || !shiftEnd) return [];
+
   return (data.trips || []).filter(t => {
-    const td = (t.startdatum || '').replace(/-/g, '');
     const forar = t.forar || '710022';
-    return (td === startDate || td === endDate) && forar === currentDriver;
+    if (forar !== currentDriver) return false;
+    const tripDate = t.startdatum;
+    const tripTime = t.starttid;
+    if (!tripDate || !tripTime) return false;
+    const tripDt = new Date(tripDate + 'T' + tripTime);
+    return tripDt >= shiftStart && tripDt <= shiftEnd;
   });
 }
 
