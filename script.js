@@ -125,6 +125,15 @@ function getMonthEnd(date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
 }
 
+function getRemainingDays(date) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const end = getMonthEnd(date);
+  if (today > end) return 0;
+  const diff = Math.ceil((end - today) / 86400000);
+  return Math.max(0, diff);
+}
+
 function getShiftsInRange(start, end) {
   return (data.shifts || []).filter(s => {
     const forar = s.forar || '710022';
@@ -242,7 +251,11 @@ function render() {
   const dricks = trips.reduce((s, t) => s + parseAmount(t.dricks), 0);
 
   const inkortPerSkift = antalSkift ? Math.round(inkort / antalSkift) : 0;
-  const behovPerSkift = antalSkift ? Math.round(goal / antalSkift) : 0;
+  
+  // Behov = remaining amount / remaining days (only if under goal)
+  const remaining = Math.max(0, goal - inkort);
+  const remainingDays = currentTab === 'manad' ? getRemainingDays(currentDate) : 0;
+  const behovPerSkift = remainingDays > 0 ? Math.round(remaining / remainingDays) : 0;
   const diffColor = diff >= 0 ? '#38a169' : '#e53e3e';
 
   let timmarSubs = '';
@@ -264,7 +277,7 @@ function render() {
   if (currentTab !== 'dag') {
     diffSubs = `
       <div class="sub"><span>Inkört/skift</span><span>${formatSEK(inkortPerSkift)}</span></div>
-      <div class="sub"><span>Behov/skift</span><span>${formatSEK(behovPerSkift)}</span></div>`;
+      <div class="sub"><span>Behov/dag</span><span>${formatSEK(behovPerSkift)}</span></div>`;
   }
 
   let html = `<div class="section">
