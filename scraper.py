@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämta körningar och pass för förare 710022.
+STIG scraper – hämta pass för förare 710022.
 """
 
 import os
@@ -28,13 +28,9 @@ def fetch_passrapport(page, forar_id):
 
     page.evaluate(f"""
         () => {{
-            const inputs = document.querySelectorAll('input[type="text"]');
-            for (const el of inputs) {{
-                const id = (el.id || '').toLowerCase();
-                if (id.includes('forar')) el.value = '{forar_id}';
-                if (id.includes('start') && id.includes('fom')) el.value = '2026-10-01';
-                if (id.includes('start') && id.includes('tom')) el.value = '2026-10-17';
-            }}
+            document.getElementById('MainContent_tbxForarId').value = '{forar_id}';
+            document.getElementById('MainContent_tbxFromDat').value = '2026-10-01';
+            document.getElementById('MainContent_tbxTomDat').value = '2026-10-17';
         }}
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
@@ -76,7 +72,6 @@ def main():
         shifts = fetch_passrapport(page, forar_id)
         print(f"Hittade {len(shifts)} skift")
 
-        # Load existing trips
         try:
             with open("data.json", "r") as f:
                 existing = json.load(f)
