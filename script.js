@@ -73,7 +73,7 @@ function isToday(d) {
 }
 
 function formatSEK(n) {
-  return n ? new Intl.NumberFormat('sv-SE').format(Math.round(n)) + ' kr' : '—';
+  return new Intl.NumberFormat('sv-SE').format(Math.round(n || 0)) + ' kr';
 }
 
 function parseAmount(str) {
@@ -153,7 +153,7 @@ function sumByType(trips, typeCode) {
 }
 
 function parseTime(tid) {
-  if (!tid || tid === '—') return 0;
+  if (!tid) return 0;
   const parts = tid.split(':');
   return parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
 }
@@ -209,7 +209,7 @@ function render() {
   const krPerMil = totalKm ? Math.round(inkort / (totalKm / 10)) : 0;
   const goal = goals[currentTab] || 4000;
   const diff = inkort - goal;
-  const arbetad = totalMinutes ? formatTime(totalMinutes) : '—';
+  const arbetad = formatTime(totalMinutes);
   const krPerTimme = totalMinutes ? Math.round(inkort / (totalMinutes / 60)) : 0;
   const antalSkift = shifts.length;
 
@@ -226,20 +226,20 @@ function render() {
   let timmarSubs = '';
   if (currentTab === 'dag' && !isTodayNow && shifts.length) {
     const s = shifts[0];
-    const startTid = s.start.split(' ')[1] || '—';
-    const slutTid = s.slut.split(' ')[1] || '—';
+    const startTid = (s.start || '').split(' ')[1] || '00:00';
+    const slutTid = (s.slut || '').split(' ')[1] || '00:00';
     timmarSubs = `
       <div class="sub"><span>Start</span><span>${startTid}</span></div>
       <div class="sub"><span>Slut</span><span>${slutTid}</span></div>
       <div class="sub"><span>Kr/timme</span><span>${formatSEK(krPerTimme)}</span></div>`;
   } else if (currentTab !== 'dag') {
     timmarSubs = `
-      <div class="sub"><span>Antal skift</span><span>${antalSkift}</span></div>
+      <div class="sub"><span>Antal skift</span><span>${antalSkift} st</span></div>
       <div class="sub"><span>Kr/timme</span><span>${formatSEK(krPerTimme)}</span></div>`;
   }
 
   let diffSubs = '';
-  if (currentTab !== 'dag' && antalSkift > 0) {
+  if (currentTab !== 'dag') {
     diffSubs = `
       <div class="sub"><span>Inkört/skift</span><span>${formatSEK(inkortPerSkift)}</span></div>
       <div class="sub"><span>Behov/skift</span><span>${formatSEK(behovPerSkift)}</span></div>`;
@@ -248,9 +248,9 @@ function render() {
   let html = `<div class="section">
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Arbetade timmar</span><span class="value">${arbetad}</span></div>
     ${timmarSubs}
-    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">${totalKm ? totalKm.toFixed(1) : '—'}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Körda km</span><span class="value">${totalKm.toFixed(1)} km</span></div>
     <div class="sub"><span>Kr/mil</span><span>${formatSEK(krPerMil)}</span></div>
-    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal || '—'}</span></div>
+    <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Antal körningar</span><span class="value">${antal} st</span></div>
     <div class="sub"><span>Kr/körning</span><span>${formatSEK(krPerKorning)}</span></div>
     <div class="stat-row" onclick="toggle(this)"><span class="toggle">+</span><span class="label">Inkört</span><span class="value">${formatSEK(inkort)}</span></div>
     <div class="sub"><span>Kort</span><span>${formatSEK(kort)}</span></div>
@@ -267,10 +267,10 @@ function render() {
     html += `<div class="section">${allTrips.map(t => {
       const isBom = t.kredittyp === '999';
       return `<div class="stat-row" onclick="toggle(this)" style="${isBom ? 'opacity:0.6;' : ''}"><span class="toggle">+</span><span class="label">${t.kvittonr}${isBom ? ' (BOM)' : ''}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>
-      <div class="sub"><span>Start</span><span>${t.starttid} – zon ${t.startzon || '?'}</span></div>
-      <div class="sub"><span>Slut</span><span>${t.sluttid} – zon ${t.slutzon || '?'}</span></div>
+      <div class="sub"><span>Start</span><span>${t.starttid || '00:00'} – zon ${t.startzon || '?'}</span></div>
+      <div class="sub"><span>Slut</span><span>${t.sluttid || '00:00'} – zon ${t.slutzon || '?'}</span></div>
       <div class="sub"><span>Betalt</span><span>${formatSEK(parseAmount(t.belopp))}</span></div>
-      <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '—'}</span></div>
+      <div class="sub"><span>Typ</span><span>${typeMap[t.kredittyp] || t.kredittyp || '?'}</span></div>
       <div class="sub"><span>Dricks</span><span>${formatSEK(parseAmount(t.dricks))}</span></div>`;
     }).join('')}</div>`;
   }
