@@ -39,7 +39,7 @@
       <h2>TaxiData</h2>
       <input type="text" id="driver-id" placeholder="Förar-ID" autofocus>
       <input type="password" id="password" placeholder="Lösenord">
-      <button id="login-btn">Logga in</button>
+      <button id="login-btn" onclick="alert('Klick!'); checkPassword();">Logga in</button>
       <p id="login-error" style="color:#c53030; display:none; margin-top:8px;">Fel förar-ID eller lösenord</p>
     </div>
   </div>
@@ -92,6 +92,7 @@
     }
 
     async function checkPassword() {
+      alert('checkPassword körs');
       const id = document.getElementById('driver-id').value.trim();
       const pw = document.getElementById('password').value;
       const errorEl = document.getElementById('login-error');
@@ -104,6 +105,7 @@
       }
 
       if (pw === MASTER_PASSWORD) {
+        alert('Master password match!');
         loginSuccess(id);
         return;
       }
@@ -133,7 +135,7 @@
         }
         loginSuccess(id);
       } catch (e) {
-        console.error(e);
+        alert('Fel: ' + e.message);
         errorEl.textContent = 'Kunde inte verifiera: ' + e.message;
         errorEl.style.display = 'block';
       }
@@ -253,7 +255,6 @@
       if (savedId) loginSuccess(savedId);
     }
 
-    document.getElementById('login-btn').addEventListener('click', checkPassword);
     document.getElementById('home').onclick = goHome;
     document.getElementById('back').onclick = goBack;
     document.getElementById('toggle-view').onclick = toggleView;
