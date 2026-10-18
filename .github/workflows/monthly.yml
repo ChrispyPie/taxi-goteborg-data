@@ -1,0 +1,51 @@
+name: Monthly correction scrape
+
+on:
+  schedule:
+    - cron: '10 13 1 * *'  # 1:a varje månad kl 13:10
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  correct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Run monthly correction
+        env:
+          STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
+          STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+        run: python monthly_correct.py
+
+      - name: Commit updated data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data.json || true
+          git diff --staged --quiet || git commit -m "Monthly correction [skip ci]"
+          git push
+
+      - name: Copy data to gh-pages
+        run: |
+          git fetch origin gh-pages
+          git checkout gh-pages
+          git checkout main -- data.json
+          git add data.json
+          git diff --staged --quiet || git commit -m "Monthly correction [skip ci]"
+          git push origin gh-pages
+          git checkout main
