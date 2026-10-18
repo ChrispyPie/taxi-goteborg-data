@@ -133,6 +133,8 @@
     let calMonth = new Date();
     let editingDriver = localStorage.getItem('admin_editing') || null;
     let currentUserId = localStorage.getItem('taxi_driver') || '';
+    let selectedDay = null;
+    let selectedCar = null;
 
     function getMyCategory() {
       const me = drivers[currentUserId];
@@ -209,6 +211,7 @@
         document.getElementById('admin-app').style.display = 'none';
         return;
       }
+      document.getElementById('category').value = category;
       render();
     }
 
@@ -251,6 +254,10 @@
 
     function getTrips() {
       return (data.trips || []).filter(t => inPeriod(t.startdatum) && t.kredittyp !== '999');
+    }
+
+    function getShifts() {
+      return (data.shifts || []).filter(s => inPeriod(s.start));
     }
 
     function getAllDriverIds() {
@@ -309,6 +316,8 @@
         periodStart = tempStart;
         periodEnd = tempEnd || tempStart;
       }
+      selectedDay = null;
+      selectedCar = null;
       closeDateModal();
       render();
     }
@@ -352,7 +361,20 @@
 
     function changeCategory() {
       category = document.getElementById('category').value;
+      selectedDay = null;
+      selectedCar = null;
       saveState();
+      render();
+    }
+
+    function selectDay(ymd) {
+      selectedDay = ymd;
+      selectedCar = null;
+      render();
+    }
+
+    function selectCar(car) {
+      selectedCar = car;
       render();
     }
 
@@ -388,6 +410,16 @@
     }
 
     function renderAkeridata(content) {
+      if (selectedCar) {
+        renderCarDrivers(content);
+      } else if (selectedDay) {
+        renderDayCars(content);
+      } else {
+        renderDayList(content);
+      }
+    }
+
+    function renderDayList(content) {
       const trips = getTrips();
       const total = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
       const sameDay = toYMD(periodStart) === toYMD(periodEnd);
@@ -407,9 +439,73 @@
       Object.entries(byDay).sort().reverse().forEach(([date, amount]) => {
         const parts = date.split('-');
         const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        html += `<div class="row"><span class="label">${formatDate(d)}</span><span class="value">${formatSEK(amount)}</span></div>`;
+        html += `<div class="row" onclick="selectDay('${date}')"><span class="label">${formatDate(d)}</span><span class="value">${formatSEK(amount)}</span></div>`;
       });
       html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function renderDayCars(content) {
+      const trips = getTrips().filter(t => (t.startdatum || '').slice(0, 10) === selectedDay);
+      const shifts = getShifts().filter(s => (s.start || '').slice(0, 8) === selectedDay.replace(/-/g, ''));
+
+      const byCar = {};
+      shifts.forEach(s => {
+        const car = s.taxi || 'Okänd';
+        if (!byCar[car]) byCar[car] = { amount: 0, driver: s.forar };
+      });
+      trips.forEach(t => {
+        const shift = shifts.find(s => s.forar === t.forar);
+        const car = shift ? shift.taxi : 'Okänd';
+        if (!byCar[car]) byCar[car] = { amount: 0, driver: t.forar };
+        byCar[car].amount += parseAmount(t.belopp);
+      });
+
+      const parts = selectedDay.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const total = Object.values(byCar).reduce((s, c) => s + c.amount, 0);
+
+      let html = `<div class="category-header">${formatDate(d)}</div>`;
+      html += `<div class="period-display">${catLabels[category]}</div>`;
+      html += '<div class="section">';
+      html += `<div class="row total"><span class="label">Totalt</span><span class="value">${formatSEK(total)}</span></div>`;
+      Object.entries(byCar).sort((a, b) => b[1].amount - a[1].amount).forEach(([car, info]) => {
+        html += `<div class="row" onclick="selectCar('${car}')"><span class="label">${car}</span><span class="value">${formatSEK(info.amount)}</span></div>`;
+      });
+      html += '</div>';
+      html += '<button onclick="selectedDay=null;render()" style="margin:16px;">← Tillbaka</button>';
+      content.innerHTML = html;
+    }
+
+    function renderCarDrivers(content) {
+      const trips = getTrips().filter(t => (t.startdatum || '').slice(0, 10) === selectedDay);
+      const shifts = getShifts().filter(s => (s.start || '').slice(0, 8) === selectedDay.replace(/-/g, '') && s.taxi === selectedCar);
+
+      const byDriver = {};
+      shifts.forEach(s => {
+        const driver = s.forar || 'Okänd';
+        if (!byDriver[driver]) byDriver[driver] = 0;
+      });
+      trips.forEach(t => {
+        const shift = shifts.find(s => s.forar === t.forar);
+        if (shift) {
+          if (!byDriver[t.forar]) byDriver[t.forar] = 0;
+          byDriver[t.forar] += parseAmount(t.belopp);
+        }
+      });
+
+      const total = Object.values(byDriver).reduce((s, a) => s + a, 0);
+
+      let html = `<div class="category-header">${selectedCar}</div>`;
+      html += `<div class="period-display">${selectedDay}</div>`;
+      html += '<div class="section">';
+      html += `<div class="row total"><span class="label">Totalt</span><span class="value">${formatSEK(total)}</span></div>`;
+      Object.entries(byDriver).sort((a, b) => b[1] - a[1]).forEach(([driver, amount]) => {
+        const name = getDisplayName(driver);
+        html += `<div class="row"><span class="label">${name}</span><span class="value">${formatSEK(amount)}</span></div>`;
+      });
+      html += '</div>';
+      html += '<button onclick="selectedCar=null;render()" style="margin:16px;">← Tillbaka</button>';
       content.innerHTML = html;
     }
 
@@ -596,11 +692,17 @@
       const item = menu.find(m => m.id === id);
       path = [{ id, label: item.label }];
       editingDriver = null;
+      selectedDay = null;
+      selectedCar = null;
       render();
     }
 
     function goBack() {
-      if (editingDriver) {
+      if (selectedCar) {
+        selectedCar = null;
+      } else if (selectedDay) {
+        selectedDay = null;
+      } else if (editingDriver) {
         editingDriver = null;
       } else {
         path.pop();
@@ -611,12 +713,16 @@
     function goHome() {
       path = [];
       editingDriver = null;
+      selectedDay = null;
+      selectedCar = null;
       render();
     }
 
     function goTo(index) {
       path = path.slice(0, index + 1);
       editingDriver = null;
+      selectedDay = null;
+      selectedCar = null;
       render();
     }
 
