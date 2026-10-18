@@ -57,26 +57,36 @@
     .info-box h4 { margin-bottom: 8px; }
     .info-box ul { margin-left: 16px; }
     .info-box li { margin-bottom: 4px; }
+    #access-denied { display: none; text-align: center; padding: 48px 16px; }
+    #access-denied h2 { margin-bottom: 16px; }
   </style>
 </head>
 <body>
-  <header>
-    <button id="back" class="hidden" onclick="goBack()">←</button>
-    <h1 id="title">Admin</h1>
-    <button onclick="goHome()">🏠</button>
-  </header>
-  <div class="breadcrumb" id="breadcrumb"></div>
-  <div class="controls hidden" id="controls">
-    <select id="category" onchange="changeCategory()">
-      <option value="inkort">Inkört</option>
-      <option value="timmar">Timmar</option>
-      <option value="km">Km</option>
-      <option value="chauffor">Chaufför</option>
-      <option value="bil">Bil</option>
-    </select>
-    <button onclick="openDateModal()">📅</button>
+  <div id="access-denied">
+    <h2>Ingen behörighet</h2>
+    <p>Du har inte tillgång till admin-panelen.</p>
+    <button onclick="location.href='index.html'" style="margin-top:16px;">Tillbaka</button>
   </div>
-  <div id="content"></div>
+
+  <div id="admin-app">
+    <header>
+      <button id="back" class="hidden" onclick="goBack()">←</button>
+      <h1 id="title">Admin</h1>
+      <button onclick="goHome()">🏠</button>
+    </header>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="controls hidden" id="controls">
+      <select id="category" onchange="changeCategory()">
+        <option value="inkort">Inkört</option>
+        <option value="timmar">Timmar</option>
+        <option value="km">Km</option>
+        <option value="chauffor">Chaufför</option>
+        <option value="bil">Bil</option>
+      </select>
+      <button onclick="openDateModal()">📅</button>
+    </div>
+    <div id="content"></div>
+  </div>
 
   <div class="modal hidden" id="date-modal">
     <div class="modal-box">
@@ -129,6 +139,11 @@
       return me && me.category === 'agare';
     }
 
+    function hasAdminAccess() {
+      const me = drivers[currentUserId];
+      return me && (me.category === 'admin' || me.category === 'agare');
+    }
+
     function maskValue(val) {
       if (!val) return '';
       return '••••••••';
@@ -160,6 +175,12 @@
         drivers = {};
         if (Array.isArray(rows)) rows.forEach(r => { drivers[r.id] = r; });
       } catch (e) { console.error(e); }
+
+      if (!hasAdminAccess()) {
+        document.getElementById('access-denied').style.display = 'block';
+        document.getElementById('admin-app').style.display = 'none';
+        return;
+      }
       render();
     }
 
