@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-17T23:40:30.853472Z",
+  "last_updated": "2026-10-18T02:13:59.590328Z",
   "forar": "710022",
   "shifts": [
     {
@@ -20494,6 +20494,19 @@
       "starttid": "23:23",
       "sluttid": "00:00",
       "startdatum": "2026-10-01"
+    },
+    {
+      "kvittonr": "030120-01",
+      "forar": "710022",
+      "startzon": "172",
+      "slutzon": "181",
+      "kilometer": "24,834",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "1081,00",
+      "starttid": "00:25",
+      "sluttid": "00:47",
+      "startdatum": "2026-10-18"
     }
   ]
 }
