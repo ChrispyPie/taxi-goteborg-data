@@ -10,24 +10,17 @@
     header { background: #e8f1f8; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #d0e0ea; }
     header h1 { font-size: 18px; flex: 1; }
     button { background: white; border: 2px solid #1a365d; color: #1a365d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-    button:hover { background: #1a365d; color: white; }
-    button.active { background: #1a365d; color: white; }
     #content { padding: 16px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
     .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
-    .icon:hover { border-color: #1a365d; }
     .icon .emoji { font-size: 32px; margin-bottom: 8px; }
     .icon .label { font-size: 13px; }
     .list-item { background: white; border: 1px solid #cbd5e0; border-radius: 4px; margin-bottom: 4px; }
     .list-row { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
-    .list-row:hover { background: #f7fafc; }
     .list-row .expand { width: 20px; font-weight: bold; }
     .submenu { padding-left: 32px; }
-    .submenu .list-row { padding: 8px 16px; font-size: 14px; }
-    .hidden { display: none !important; }
     .section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
     #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    #login-screen.hidden { display: none !important; }
     .login-box { background: white; padding: 32px; border-radius: 12px; text-align: center; width: 300px; }
     .login-box h2 { margin-bottom: 16px; }
     .login-box input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 16px; }
@@ -41,13 +34,13 @@
       <input type="text" id="driver-id" placeholder="Förar-ID" autofocus>
       <input type="password" id="password" placeholder="Lösenord">
       <button id="login-btn" onclick="checkPassword();">Logga in</button>
-      <p id="login-error" style="color:#c53030; display:none; margin-top:8px;">Fel förar-ID eller lösenord</p>
+      <p id="login-error" style="color:#c53030; display:none; margin-top:8px;"></p>
     </div>
   </div>
 
-  <div id="app" class="hidden">
+  <div id="app" style="display:none;">
     <header>
-      <button id="back" class="hidden">←</button>
+      <button id="back" style="display:none;">←</button>
       <button id="home">🏠</button>
       <h1 id="title">TaxiData</h1>
       <span id="driver-label"></span>
@@ -58,10 +51,7 @@
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
     const MASTER_PASSWORD = 'taxi2026';
-
     const menu = [
       { id: 'kordata', icon: '🚗', label: 'Körpassdata' },
       { id: 'statistik', icon: '📊', label: 'Statistik' },
@@ -76,160 +66,69 @@
       { id: 'installningar', icon: '⚙️', label: 'Inställningar' }
     ];
 
-    let view = localStorage.getItem('user_view') || 'grid';
+    let view = 'grid';
     let current = null;
     let expanded = {};
     let driverId = null;
 
-    async function supabaseFetch(path) {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_KEY
-        }
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    }
-
-    async function checkPassword() {
-      const id = document.getElementById('driver-id').value.trim();
-      const pw = document.getElementById('password').value;
-      const errorEl = document.getElementById('login-error');
-      errorEl.style.display = 'none';
-
-      if (!id || !pw) {
-        errorEl.textContent = 'Fyll i förar-ID och lösenord';
-        errorEl.style.display = 'block';
-        return;
-      }
-
+    function checkPassword() {
+      var id = document.getElementById('driver-id').value;
+      var pw = document.getElementById('password').value;
       if (pw === MASTER_PASSWORD) {
-        loginSuccess(id);
-        return;
-      }
-
-      try {
-        const rows = await supabaseFetch('drivers?id=eq.' + id + '&select=*');
-        if (rows.length === 0) {
-          errorEl.textContent = 'Förar-ID finns inte';
-          errorEl.style.display = 'block';
-          return;
-        }
-        const driver = rows[0];
-        if (!driver.activated) {
-          errorEl.textContent = 'Kontot är inte aktiverat';
-          errorEl.style.display = 'block';
-          return;
-        }
-        if (driver.expiry && new Date(driver.expiry) < new Date()) {
-          errorEl.textContent = 'Lösenordet har gått ut';
-          errorEl.style.display = 'block';
-          return;
-        }
-        if (driver.password !== pw) {
-          errorEl.textContent = 'Fel lösenord';
-          errorEl.style.display = 'block';
-          return;
-        }
-        loginSuccess(id);
-      } catch (e) {
-        alert('Fel: ' + e.message);
-        errorEl.textContent = 'Kunde inte verifiera: ' + e.message;
-        errorEl.style.display = 'block';
+        localStorage.setItem('taxi_logged_in', '1');
+        localStorage.setItem('taxi_driver', id);
+        location.reload();
+      } else {
+        document.getElementById('login-error').textContent = 'Fel lösenord';
+        document.getElementById('login-error').style.display = 'block';
       }
     }
 
-    function loginSuccess(id) {
-      driverId = id;
-      localStorage.setItem('taxi_logged_in', '1');
-      localStorage.setItem('taxi_driver', id);
+    function showApp() {
+      driverId = localStorage.getItem('taxi_driver');
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
-      document.getElementById('driver-label').textContent = id;
+      document.getElementById('driver-label').textContent = driverId;
       render();
     }
 
     function logout() {
-      driverId = null;
-      current = null;
       localStorage.removeItem('taxi_logged_in');
       localStorage.removeItem('taxi_driver');
-      document.getElementById('app').style.display = 'none';
-      document.getElementById('login-screen').style.display = 'flex';
-      document.getElementById('driver-id').value = '';
-      document.getElementById('password').value = '';
+      location.reload();
     }
 
     function render() {
-      const content = document.getElementById('content');
-      const title = document.getElementById('title');
-      const back = document.getElementById('back');
-      const toggle = document.getElementById('toggle-view');
-
+      var content = document.getElementById('content');
+      var title = document.getElementById('title');
+      var back = document.getElementById('back');
+      var toggle = document.getElementById('toggle-view');
       toggle.textContent = view === 'grid' ? 'Lista' : 'Ikoner';
 
       if (current) {
-        const item = findMenuItem(current);
-        title.textContent = item ? item.label : 'TaxiData';
-        back.classList.remove('hidden');
-        content.innerHTML = `<div class="section"><p>Kommer snart: ${item?.label || current}</p></div>`;
+        title.textContent = current;
+        back.style.display = 'inline-block';
+        content.innerHTML = '<div class="section"><p>Kommer snart: ' + current + '</p></div>';
       } else {
         title.textContent = 'TaxiData';
-        back.classList.add('hidden');
+        back.style.display = 'none';
         if (view === 'grid') {
-          content.innerHTML = `<div class="grid">${renderGridItems(menu)}</div>`;
+          var html = '<div class="grid">';
+          for (var i = 0; i < menu.length; i++) {
+            html += '<div class="icon" onclick="openItem(\'' + menu[i].id + '\')">';
+            html += '<div class="emoji">' + menu[i].icon + '</div>';
+            html += '<div class="label">' + menu[i].label + '</div></div>';
+          }
+          html += '</div>';
+          content.innerHTML = html;
         } else {
-          content.innerHTML = renderListItems(menu);
+          content.innerHTML = '<p>Listvy kommer snart</p>';
         }
       }
-    }
-
-    function findMenuItem(id, items = menu) {
-      for (const item of items) {
-        if (item.id === id) return item;
-        if (item.children) {
-          const found = findMenuItem(id, item.children);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-
-    function renderGridItems(items) {
-      return items.map(m => `
-        <div class="icon" onclick="openItem('${m.id}')">
-          <div class="emoji">${m.icon}</div>
-          <div class="label">${m.label}</div>
-        </div>
-      `).join('');
-    }
-
-    function renderListItems(items, isSub = false) {
-      return items.map(m => {
-        const hasChildren = m.children && m.children.length > 0;
-        const isExpanded = expanded[m.id];
-        let html = `<div class="list-item">
-          <div class="list-row" onclick="${hasChildren ? `toggleExpand('${m.id}')` : `openItem('${m.id}')`}">
-            ${hasChildren ? `<span class="expand">${isExpanded ? '−' : '+'}</span>` : '<span class="expand"></span>'}
-            <span style="font-size:20px;">${m.icon}</span>
-            <span>${m.label}</span>
-          </div>`;
-        if (hasChildren && isExpanded) {
-          html += `<div class="submenu">${renderListItems(m.children, true)}</div>`;
-        }
-        html += '</div>';
-        return html;
-      }).join('');
     }
 
     function openItem(id) {
       current = id;
-      render();
-    }
-
-    function toggleExpand(id) {
-      expanded[id] = !expanded[id];
       render();
     }
 
@@ -238,22 +137,19 @@
       render();
     }
 
-    function goBack() {
-      current = null;
+    function toggleView() {
+      view = view === 'grid' ? 'list' : 'grid';
       render();
     }
 
-    function toggleView() {
-      view = view === 'grid' ? 'list' : 'grid';
-      localStorage.setItem('user_view', view);
-      render();
+    if (localStorage.getItem('taxi_logged_in') === '1') {
+      showApp();
     }
 
     document.getElementById('home').onclick = goHome;
-    document.getElementById('back').onclick = goBack;
+    document.getElementById('back').onclick = goHome;
     document.getElementById('toggle-view').onclick = toggleView;
     document.getElementById('logout').onclick = logout;
-    document.getElementById('password').onkeypress = (e) => { if (e.key === 'Enter') checkPassword(); };
   </script>
 </body>
 </html>
