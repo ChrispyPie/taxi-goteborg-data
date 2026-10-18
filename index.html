@@ -4,7 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TaxiData</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #e8f1f8; color: #1a365d; }
+    header { background: #e8f1f8; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #d0e0ea; }
+    header h1 { font-size: 18px; flex: 1; }
+    button { background: white; border: 2px solid #1a365d; color: #1a365d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #1a365d; color: white; }
+    button.active { background: #1a365d; color: white; }
+    #content { padding: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
+    .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
+    .icon:hover { border-color: #1a365d; }
+    .icon .emoji { font-size: 32px; margin-bottom: 8px; }
+    .icon .label { font-size: 13px; }
+    .list-item { background: white; border: 1px solid #cbd5e0; border-radius: 4px; margin-bottom: 4px; }
+    .list-row { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .list-row:hover { background: #f7fafc; }
+    .list-row .expand { width: 20px; font-weight: bold; }
+    .submenu { padding-left: 32px; }
+    .submenu .list-row { padding: 8px 16px; font-size: 14px; }
+    .hidden { display: none; }
+    .section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-box { background: white; padding: 32px; border-radius: 12px; text-align: center; width: 300px; }
+    .login-box h2 { margin-bottom: 16px; }
+    .login-box input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 16px; }
+    .login-box button { width: 100%; padding: 10px; }
+  </style>
 </head>
 <body>
   <div id="login-screen">
@@ -13,37 +40,158 @@
       <input type="text" id="driver-id" placeholder="Förar-ID" autofocus>
       <input type="password" id="password" placeholder="Lösenord">
       <button onclick="checkPassword()">Logga in</button>
-      <p id="login-error" style="color:#c53030; display:none;">Fel förar-ID eller lösenord</p>
+      <p id="login-error" style="color:#c53030; display:none; margin-top:8px;">Fel förar-ID eller lösenord</p>
     </div>
   </div>
 
-  <div id="app" style="display:none;">
+  <div id="app" class="hidden">
     <header>
-      <h1>TaxiData</h1>
+      <button id="back" class="hidden">←</button>
+      <button id="home">🏠</button>
+      <h1 id="title">TaxiData</h1>
       <span id="driver-label"></span>
-      <button id="logout" onclick="logout()">Logga ut</button>
+      <button id="toggle-view">Lista</button>
+      <button id="logout">Logga ut</button>
     </header>
-
-    <div class="controls">
-      <div class="tabs">
-        <button class="tab active" data-tab="dag">Dag</button>
-        <button class="tab" data-tab="vecka">Vecka</button>
-        <button class="tab" data-tab="manad">Månad</button>
-      </div>
-
-      <div class="date-nav">
-        <button id="prev">‹</button>
-        <div id="current-date">Idag</div>
-        <button id="next">›</button>
-        <button id="today">»</button>
-      </div>
-
-      <div id="last-updated" style="text-align:center; font-size:0.8rem; color:#718096; margin-top:0.6rem;"></div>
-    </div>
-
-    <main id="dashboard"></main>
+    <div id="content"></div>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    const menu = [
+      { id: 'kordata', icon: '🚗', label: 'Körpassdata' },
+      { id: 'statistik', icon: '📊', label: 'Statistik' },
+      { id: 'toplistor', icon: '🏆', label: 'Toplistor' },
+      { id: 'kommunikation', icon: '💬', label: 'Kommunikation', children: [
+        { id: 'meddelanden', icon: '📨', label: 'Meddelanden' },
+        { id: 'paminnelser', icon: '⏰', label: 'Påminnelser' },
+        { id: 'forum', icon: '📝', label: 'Forum' },
+        { id: 'feedback', icon: '🐛', label: 'Feedback' }
+      ]},
+      { id: 'kalender', icon: '📅', label: 'Kalender' },
+      { id: 'installningar', icon: '⚙️', label: 'Inställningar' }
+    ];
+
+    let view = localStorage.getItem('user_view') || 'grid';
+    let current = null;
+    let expanded = {};
+    let driverId = null;
+
+    function checkPassword() {
+      const id = document.getElementById('driver-id').value.trim();
+      const pw = document.getElementById('password').value;
+      if (id && pw) {
+        driverId = id;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('driver-label').textContent = id;
+        render();
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+      }
+    }
+
+    function logout() {
+      driverId = null;
+      current = null;
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('driver-id').value = '';
+      document.getElementById('password').value = '';
+    }
+
+    function render() {
+      const content = document.getElementById('content');
+      const title = document.getElementById('title');
+      const back = document.getElementById('back');
+      const toggle = document.getElementById('toggle-view');
+
+      toggle.textContent = view === 'grid' ? 'Lista' : 'Ikoner';
+
+      if (current) {
+        const item = findMenuItem(current);
+        title.textContent = item ? item.label : 'TaxiData';
+        back.classList.remove('hidden');
+        content.innerHTML = `<div class="section"><p>Kommer snart: ${item?.label || current}</p></div>`;
+      } else {
+        title.textContent = 'TaxiData';
+        back.classList.add('hidden');
+        if (view === 'grid') {
+          content.innerHTML = `<div class="grid">${renderGridItems(menu)}</div>`;
+        } else {
+          content.innerHTML = renderListItems(menu);
+        }
+      }
+    }
+
+    function findMenuItem(id, items = menu) {
+      for (const item of items) {
+        if (item.id === id) return item;
+        if (item.children) {
+          const found = findMenuItem(id, item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function renderGridItems(items) {
+      return items.map(m => `
+        <div class="icon" onclick="openItem('${m.id}')">
+          <div class="emoji">${m.icon}</div>
+          <div class="label">${m.label}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderListItems(items, isSub = false) {
+      return items.map(m => {
+        const hasChildren = m.children && m.children.length > 0;
+        const isExpanded = expanded[m.id];
+        let html = `<div class="list-item">
+          <div class="list-row" onclick="${hasChildren ? `toggleExpand('${m.id}')` : `openItem('${m.id}')`}">
+            ${hasChildren ? `<span class="expand">${isExpanded ? '−' : '+'}</span>` : '<span class="expand"></span>'}
+            <span style="font-size:20px;">${m.icon}</span>
+            <span>${m.label}</span>
+          </div>`;
+        if (hasChildren && isExpanded) {
+          html += `<div class="submenu">${renderListItems(m.children, true)}</div>`;
+        }
+        html += '</div>';
+        return html;
+      }).join('');
+    }
+
+    function openItem(id) {
+      current = id;
+      render();
+    }
+
+    function toggleExpand(id) {
+      expanded[id] = !expanded[id];
+      render();
+    }
+
+    function goHome() {
+      current = null;
+      render();
+    }
+
+    function goBack() {
+      current = null;
+      render();
+    }
+
+    function toggleView() {
+      view = view === 'grid' ? 'list' : 'grid';
+      localStorage.setItem('user_view', view);
+      render();
+    }
+
+    document.getElementById('home').onclick = goHome;
+    document.getElementById('back').onclick = goBack;
+    document.getElementById('toggle-view').onclick = toggleView;
+    document.getElementById('logout').onclick = logout;
+    document.getElementById('password').onkeypress = (e) => { if (e.key === 'Enter') checkPassword(); };
+  </script>
 </body>
 </html>
