@@ -15,17 +15,21 @@
     .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
     .icon .emoji { font-size: 32px; margin-bottom: 8px; }
     .icon .label { font-size: 13px; }
-    .breadcrumb { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #e2e8f0; font-size: 14px; flex-wrap: wrap; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
     .breadcrumb span { cursor: pointer; color: #3182ce; }
     .breadcrumb .sep { color: #a0aec0; }
-    .controls { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; }
-    .controls select, .controls button { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e0; }
+    .category-header { font-size: 20px; font-weight: 600; padding: 16px 16px 4px; }
+    .period-display { font-size: 14px; color: #4a5568; padding: 0 16px 8px; }
+    .controls { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; align-items: center; }
+    .controls select { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e0; }
+    .controls button { padding: 8px 12px; }
     .section { background: white; border-radius: 12px; margin: 16px; }
     .row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #edf2f7; cursor: pointer; }
     .row:hover { background: #f7fafc; }
     .row:last-child { border-bottom: none; }
     .row .label { flex: 1; font-weight: 500; }
     .row .value { font-weight: 600; }
+    .row.total { background: #f7fafc; font-weight: 600; }
     .hidden { display: none !important; }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
     .modal-box { background: white; border-radius: 12px; padding: 16px; width: 90%; max-width: 320px; }
@@ -48,13 +52,13 @@
   <div class="breadcrumb" id="breadcrumb"></div>
   <div class="controls hidden" id="controls">
     <select id="category" onchange="changeCategory()">
-      <option value="chauffor">Chaufför</option>
-      <option value="bil">Bil</option>
       <option value="inkort">Inkört</option>
       <option value="timmar">Timmar</option>
       <option value="km">Km</option>
+      <option value="chauffor">Chaufför</option>
+      <option value="bil">Bil</option>
     </select>
-    <button id="period-btn" onclick="openDateModal()">Period</button>
+    <button onclick="openDateModal()">📅</button>
   </div>
   <div id="content"></div>
 
@@ -80,12 +84,13 @@
       { id: 'statistik', icon: '📈', label: 'Statistik' }
     ];
 
+    const catLabels = { inkort: 'Inkört', timmar: 'Timmar', km: 'Km', chauffor: 'Chaufför', bil: 'Bil' };
     const days = ['sö', 'må', 'ti', 'on', 'to', 'fr', 'lö'];
     const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
     let data = {};
     let path = [];
-    let category = 'chauffor';
+    let category = 'inkort';
     let periodStart = new Date();
     let periodEnd = new Date();
     periodStart.setDate(periodStart.getDate() - 1);
@@ -108,18 +113,6 @@
       return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0;
     }
 
-    function parseTime(tid) {
-      if (!tid) return 0;
-      const parts = tid.split(':');
-      return parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
-    }
-
-    function formatTime(minutes) {
-      const h = Math.floor(minutes / 60);
-      const m = minutes % 60;
-      return h + ':' + String(m).padStart(2, '0');
-    }
-
     function formatDate(d) {
       return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
     }
@@ -130,10 +123,6 @@
       const ymd = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
       const date = new Date(ymd);
       return date >= periodStart && date <= periodEnd;
-    }
-
-    function getShifts() {
-      return (data.shifts || []).filter(s => inPeriod(s.start));
     }
 
     function getTrips() {
@@ -162,12 +151,6 @@
         }
       });
       bc.innerHTML = html;
-    }
-
-    function renderPeriod() {
-      const btn = document.getElementById('period-btn');
-      const sameDay = periodStart.toDateString() === periodEnd.toDateString();
-      btn.textContent = sameDay ? formatDate(periodStart) : formatDate(periodStart) + ' – ' + formatDate(periodEnd);
     }
 
     function openDateModal() {
@@ -230,13 +213,11 @@
 
     function changeCategory() {
       category = document.getElementById('category').value;
-      path = path.slice(0, 1);
       render();
     }
 
     function render() {
       renderBreadcrumb();
-      renderPeriod();
       const content = document.getElementById('content');
       const title = document.getElementById('title');
 
@@ -250,77 +231,41 @@
         `).join('')}</div>`;
       } else if (path[0].id === 'akeridata') {
         title.textContent = 'Åkeridata';
-        if (path.length === 1) {
-          renderLevel1(content);
-        } else if (path.length === 2) {
-          renderLevel2(content);
-        } else if (path.length === 3) {
-          renderLevel3(content);
-        } else if (path.length === 4) {
-          renderLevel4(content);
-        }
+        renderAkeridata(content);
       } else {
         title.textContent = path[0].label;
         content.innerHTML = '<div class="section"><p style="padding:16px;">Kommer snart</p></div>';
       }
     }
 
-    function renderLevel1(content) {
-      const shifts = getShifts();
+    function renderAkeridata(content) {
       const trips = getTrips();
-      let html = '<div class="section">';
-      if (category === 'chauffor') {
-        const drivers = {};
-        shifts.forEach(s => {
-          if (!drivers[s.forar]) drivers[s.forar] = { shifts: [], trips: [] };
-          drivers[s.forar].shifts.push(s);
-        });
-        trips.forEach(t => {
-          if (!drivers[t.forar]) drivers[t.forar] = { shifts: [], trips: [] };
-          drivers[t.forar].trips.push(t);
-        });
-        Object.entries(drivers).sort().forEach(([id, d]) => {
-          const inkort = d.trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
-          html += `<div class="row" onclick="drillDown('${id}', '${id}')"><span class="label">${id}</span><span class="value">${formatSEK(inkort)}</span></div>`;
-        });
-      } else if (category === 'bil') {
-        const cars = {};
-        shifts.forEach(s => {
-          const car = s.taxi || 'Okänd';
-          if (!cars[car]) cars[car] = { shifts: [], trips: [] };
-          cars[car].shifts.push(s);
-        });
-        Object.entries(cars).sort().forEach(([car, d]) => {
-          html += `<div class="row" onclick="drillDown('${car}', '${car}')"><span class="label">${car}</span><span class="value">${d.shifts.length} skift</span></div>`;
-        });
-      } else {
-        const total = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
-        html += `<div class="row"><span class="label">Totalt</span><span class="value">${formatSEK(total)}</span></div>`;
-      }
+      const total = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
+      const sameDay = periodStart.toDateString() === periodEnd.toDateString();
+      const periodText = sameDay ? formatDate(periodStart) : formatDate(periodStart) + ' – ' + formatDate(periodEnd);
+
+      const byDay = {};
+      trips.forEach(t => {
+        const d = (t.startdatum || '').slice(0, 10);
+        if (!byDay[d]) byDay[d] = 0;
+        byDay[d] += parseAmount(t.belopp);
+      });
+
+      let html = `<div class="category-header">${catLabels[category]}</div>`;
+      html += `<div class="period-display">${periodText}</div>`;
+      html += '<div class="section">';
+      html += `<div class="row total"><span class="label">Totalt</span><span class="value">${formatSEK(total)}</span></div>`;
+      Object.entries(byDay).sort().reverse().forEach(([date, amount]) => {
+        const d = new Date(date);
+        html += `<div class="row"><span class="label">${formatDate(d)}</span><span class="value">${formatSEK(amount)}</span></div>`;
+      });
       html += '</div>';
       content.innerHTML = html;
-    }
-
-    function renderLevel2(content) {
-      content.innerHTML = '<div class="section"><p style="padding:16px;">Nivå 2 kommer</p></div>';
-    }
-
-    function renderLevel3(content) {
-      content.innerHTML = '<div class="section"><p style="padding:16px;">Nivå 3 kommer</p></div>';
-    }
-
-    function renderLevel4(content) {
-      content.innerHTML = '<div class="section"><p style="padding:16px;">Nivå 4 kommer</p></div>';
     }
 
     function openMenu(id) {
       const item = menu.find(m => m.id === id);
       path = [{ id, label: item.label }];
-      render();
-    }
-
-    function drillDown(id, label) {
-      path.push({ id, label });
       render();
     }
 
