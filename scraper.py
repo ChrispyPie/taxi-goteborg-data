@@ -3,6 +3,9 @@
 STIG scraper – hämtar data för alla förare.
 Körs varje timme via GitHub Actions.
 Scrapar gårdagen + idag. Hoppar över befintliga kvitton.
+
+Manuell körning med datum:
+  SCRAPE_FROM=2026-10-01 SCRAPE_TO=2026-10-03 python scraper.py
 """
 
 import os
@@ -113,10 +116,10 @@ def fetch_shifts(page, forar_id, from_date, to_date):
             })
     return shifts
 
-def scrape_driver(page, forar_id, existing, start_date, today):
+def scrape_driver(page, forar_id, existing, start_date, end_date):
     new_count = 0
     current = start_date
-    while current <= today:
+    while current <= end_date:
         date_str = current.strftime("%Y-%m-%d")
         receipts = scrape_day(page, forar_id, date_str)
         for kvitto in receipts:
@@ -152,10 +155,23 @@ def main():
             s["forar"] = forar
             all_shifts.append(s)
 
+    # Datum från env eller default igår+idag
     today = datetime.now()
-    yesterday = today - timedelta(days=1)
-    from_str = yesterday.strftime("%Y-%m-%d")
-    to_str = today.strftime("%Y-%m-%d")
+    from_env = os.environ.get("SCRAPE_FROM", "")
+    to_env = os.environ.get("SCRAPE_TO", "")
+
+    if from_env:
+        start_date = datetime.strptime(from_env, "%Y-%m-%d")
+    else:
+        start_date = today - timedelta(days=1)
+
+    if to_env:
+        end_date = datetime.strptime(to_env, "%Y-%m-%d")
+    else:
+        end_date = today
+
+    from_str = start_date.strftime("%Y-%m-%d")
+    to_str = end_date.strftime("%Y-%m-%d")
 
     print(f"Scrapar {from_str} till {to_str}")
 
@@ -171,7 +187,7 @@ def main():
         total_new = 0
         for forar_id in DRIVERS:
             print(f"Förare {forar_id}:")
-            new_count = scrape_driver(page, forar_id, existing, yesterday, today)
+            new_count = scrape_driver(page, forar_id, existing, start_date, end_date)
             total_new += new_count
             new_shifts = fetch_shifts(page, forar_id, from_str, to_str)
             added = 0
