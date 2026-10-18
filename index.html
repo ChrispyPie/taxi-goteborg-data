@@ -114,15 +114,24 @@
       driverId = localStorage.getItem('taxi_driver') || 'okänd';
       await loadDriverData();
       document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      var fullName = ((driverData.first_name || '') + ' ' + (driverData.last_name || '')).trim();
-      document.getElementById('full-name').textContent = fullName || driverId;
-      renderMenu();
+      
+      var savedView = localStorage.getItem('taxi_view');
+      if (savedView === 'kordata') {
+        document.getElementById('dashboard-view').classList.remove('hidden');
+        document.getElementById('driver-label').textContent = driverId;
+        if (typeof loadData === 'function') loadData().then(render);
+      } else {
+        document.getElementById('app').style.display = 'block';
+        var fullName = ((driverData.first_name || '') + ' ' + (driverData.last_name || '')).trim();
+        document.getElementById('full-name').textContent = fullName || driverId;
+        renderMenu();
+      }
     }
 
     function logout() {
       localStorage.removeItem('taxi_logged_in');
       localStorage.removeItem('taxi_driver');
+      localStorage.removeItem('taxi_view');
       location.reload();
     }
 
@@ -167,17 +176,20 @@
 
     function openItem(id) {
       if (id === 'kordata') {
+        localStorage.setItem('taxi_view', 'kordata');
         document.getElementById('app').style.display = 'none';
         document.getElementById('dashboard-view').classList.remove('hidden');
         document.getElementById('driver-label').textContent = driverId;
         if (typeof loadData === 'function') loadData().then(render);
       } else {
+        localStorage.removeItem('taxi_view');
         current = id;
         renderMenu();
       }
     }
 
     function goHome() {
+      localStorage.removeItem('taxi_view');
       current = null;
       document.getElementById('profile-menu').classList.remove('show');
       document.getElementById('dashboard-view').classList.add('hidden');
