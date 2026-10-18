@@ -8,172 +8,47 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: #e8f1f8; color: #1a365d; }
     header { background: #e8f1f8; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #d0e0ea; }
-    header h1 { font-size: 18px; flex: 1; }
+    header h1 { font-size: 18px; flex: 1; text-align: center; }
     button { background: white; border: 2px solid #1a365d; color: #1a365d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-    button:hover { background: #1a365d; color: white; }
-    button.active { background: #1a365d; color: white; }
     #content { padding: 16px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
-    .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
-    .icon:hover { border-color: #1a365d; }
-    .icon .emoji { font-size: 32px; margin-bottom: 8px; }
-    .icon .label { font-size: 13px; }
-    .list-item { background: white; border: 1px solid #cbd5e0; border-radius: 4px; margin-bottom: 4px; }
-    .list-row { padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
-    .list-row:hover { background: #f7fafc; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .breadcrumb span { cursor: pointer; color: #3182ce; }
+    .breadcrumb span:hover { text-decoration: underline; }
+    .breadcrumb .sep { color: #a0aec0; }
+    .period { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; }
+    .period button { background: white; }
+    .section { background: white; border-radius: 12px; margin: 16px; }
+    .row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #edf2f7; cursor: pointer; }
+    .row:hover { background: #f7fafc; }
+    .row:last-child { border-bottom: none; }
+    .row .label { flex: 1; font-weight: 500; }
+    .row .value { font-weight: 600; }
     .hidden { display: none; }
-    .section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    .driver-row { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #edf2f7; gap: 8px; }
-    .driver-id { font-weight: 600; }
-    .driver-name { color: #4a5568; }
-    .driver-status { font-size: 11px; padding: 2px 6px; border-radius: 10px; }
-    .status-active { background: #c6f6d5; color: #276749; }
-    .status-inactive { background: #fed7d7; color: #c53030; }
-    .status-pending { background: #fefcbf; color: #975a16; }
-    .cat-normal { }
-    .cat-semester { background: #e9d8fd; }
-    .cat-avslutad { background: #e2e8f0; opacity: 0.7; }
-    .cat-admin { background: #bee3f8; }
-    .cat-agare { background: #fbd38d; }
-    .btn-small { padding: 4px 8px; font-size: 12px; }
-    .password-box { background: #f7fafc; padding: 16px; border-radius: 8px; text-align: center; }
-    .password-box code { font-size: 24px; font-weight: 700; letter-spacing: 4px; }
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 13px; margin-bottom: 4px; color: #4a5568; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
-    .form-group textarea { min-height: 60px; resize: vertical; }
-    .section-header { font-size: 12px; font-weight: 600; color: #718096; padding: 8px 12px; background: #f7fafc; margin-top: 16px; }
-    .form-section { font-size: 14px; font-weight: 600; margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
   </style>
 </head>
 <body>
   <header>
-    <button id="back" class="hidden">←</button>
-    <button id="home">🏠</button>
-    <h1 id="title">Admin</h1>
-    <button id="toggle-view">Ikoner</button>
+    <button id="back" class="hidden" onclick="goBack()">←</button>
+    <h1 id="title">Åkeridata</h1>
+    <button onclick="location.href='index.html'">🏠</button>
   </header>
+  <div class="breadcrumb" id="breadcrumb"></div>
+  <div class="period">
+    <button id="period-btn" onclick="editPeriod()">Välj period</button>
+  </div>
   <div id="content"></div>
 
   <script>
-    const SUPABASE_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
-
-    const menu = [
-      { id: 'oversikt', icon: '📊', label: 'Översikt' },
-      { id: 'chaufforer', icon: '👥', label: 'Chaufförer' },
-      { id: 'statistik', icon: '📈', label: 'Statistik' }
-    ];
-
-    const categories = {
-      agare: 'Ägare',
-      admin: 'Admin',
-      normal: 'Normal',
-      semester: 'Semester',
-      avslutad: 'Avslutad'
-    };
-
-    let view = localStorage.getItem('admin_view') || 'grid';
-    let current = null;
     let data = {};
-    let drivers = {};
-    let selectedDriver = null;
-    let tempPassword = null;
-
-    async function supabaseFetch(path, options = {}) {
-      const headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      };
-      if (options.headers) {
-        Object.assign(headers, options.headers);
-      }
-      const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-        method: options.method || 'GET',
-        headers,
-        body: options.body
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const text = await res.text();
-      if (!text || text.trim() === '') return {};
-      try { return JSON.parse(text); } catch { return {}; }
-    }
-
-    async function loadDrivers() {
-      try {
-        const rows = await supabaseFetch('drivers?select=*');
-        drivers = {};
-        if (Array.isArray(rows)) {
-          rows.forEach(r => { drivers[r.id] = r; });
-        }
-      } catch (e) {
-        console.error('Load drivers failed:', e);
-        drivers = {};
-      }
-    }
-
-    async function saveDriverToDb(id, driverData) {
-      const payload = { id, ...driverData };
-      await supabaseFetch('drivers', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
-      });
-    }
+    let path = [];
+    let periodStart = new Date();
+    let periodEnd = new Date();
+    periodStart.setDate(periodStart.getDate() - 7);
 
     async function loadData() {
-      try {
-        const dataRes = await fetch('data.json?t=' + Date.now());
-        data = await dataRes.json();
-      } catch (e) {
-        console.error(e);
-      }
-      await loadDrivers();
-    }
-
-    function generatePassword() {
-      const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-      let pw = '';
-      for (let i = 0; i < 6; i++) pw += chars[Math.floor(Math.random() * chars.length)];
-      return pw;
-    }
-
-    function getAllDrivers() {
-      const ids = new Set();
-      (data.shifts || []).forEach(s => { if (s.forar) ids.add(s.forar); });
-      (data.trips || []).forEach(t => { if (t.forar) ids.add(t.forar); });
-      Object.keys(drivers).forEach(id => ids.add(id));
-      return Array.from(ids);
-    }
-
-    function getSortedDrivers() {
-      const all = getAllDrivers();
-      const order = { agare: 0, admin: 1, normal: 2, semester: 3, avslutad: 4 };
-      return all.sort((a, b) => {
-        const catA = (drivers[a]?.category || 'normal');
-        const catB = (drivers[b]?.category || 'normal');
-        if (order[catA] !== order[catB]) return order[catA] - order[catB];
-        const nameA = drivers[a]?.name || a;
-        const nameB = drivers[b]?.name || b;
-        return nameA.localeCompare(nameB);
-      });
-    }
-
-    function getDriverStatus(id) {
-      const d = drivers[id];
-      if (!d) return 'inactive';
-      if (d.category === 'avslutad') return 'inactive';
-      if (d.activated && d.expiry && new Date(d.expiry) > new Date()) {
-        return d.logged_in ? 'active' : 'pending';
-      }
-      return 'inactive';
-    }
-
-    function getFirstName(id) {
-      const name = drivers[id]?.name || '';
-      return name.split(' ')[0] || '';
+      const res = await fetch('data.json?t=' + Date.now());
+      data = await res.json();
+      render();
     }
 
     function formatSEK(n) {
@@ -184,219 +59,215 @@
       return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0;
     }
 
+    function parseTime(tid) {
+      if (!tid) return 0;
+      const parts = tid.split(':');
+      return parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
+    }
+
+    function formatTime(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return h + ':' + String(m).padStart(2, '0');
+    }
+
+    function inPeriod(dateStr) {
+      if (!dateStr) return false;
+      const d = dateStr.replace(/\s/g, '').slice(0, 8);
+      const ymd = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+      const date = new Date(ymd);
+      return date >= periodStart && date <= periodEnd;
+    }
+
+    function getShifts() {
+      return (data.shifts || []).filter(s => inPeriod(s.start));
+    }
+
+    function getTrips() {
+      return (data.trips || []).filter(t => inPeriod(t.startdatum));
+    }
+
+    function getStats() {
+      const shifts = getShifts();
+      const trips = getTrips().filter(t => t.kredittyp !== '999');
+      const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
+      const timmar = shifts.reduce((s, sh) => s + parseTime(sh.tid), 0);
+      const km = trips.reduce((s, t) => s + parseAmount(t.kilometer), 0);
+      return { inkort, timmar, km, shifts, trips };
+    }
+
+    function getCars() {
+      const cars = {};
+      getShifts().forEach(s => {
+        const car = s.taxi || 'Okänd';
+        if (!cars[car]) cars[car] = { shifts: [], trips: [] };
+        cars[car].shifts.push(s);
+      });
+      getTrips().forEach(t => {
+        const shift = getShifts().find(s => s.forar === t.forar && inPeriod(s.start));
+        const car = shift?.taxi || 'Okänd';
+        if (!cars[car]) cars[car] = { shifts: [], trips: [] };
+        if (t.kredittyp !== '999') cars[car].trips.push(t);
+      });
+      return cars;
+    }
+
+    function getDriversForCar(car) {
+      const cars = getCars();
+      const drivers = {};
+      (cars[car]?.shifts || []).forEach(s => {
+        const id = s.forar;
+        if (!drivers[id]) drivers[id] = { shifts: [], trips: [] };
+        drivers[id].shifts.push(s);
+      });
+      (cars[car]?.trips || []).forEach(t => {
+        const id = t.forar;
+        if (!drivers[id]) drivers[id] = { shifts: [], trips: [] };
+        drivers[id].trips.push(t);
+      });
+      return drivers;
+    }
+
+    function renderBreadcrumb() {
+      const bc = document.getElementById('breadcrumb');
+      const back = document.getElementById('back');
+      if (path.length === 0) {
+        bc.innerHTML = '';
+        back.classList.add('hidden');
+        return;
+      }
+      back.classList.remove('hidden');
+      let html = '<span onclick="goHome()">Hem</span>';
+      path.forEach((p, i) => {
+        html += '<span class="sep">›</span>';
+        if (i < path.length - 1) {
+          html += `<span onclick="goTo(${i})">${p.label}</span>`;
+        } else {
+          html += `<span>${p.label}</span>`;
+        }
+      });
+      bc.innerHTML = html;
+    }
+
+    function renderPeriod() {
+      const btn = document.getElementById('period-btn');
+      const fmt = d => d.toISOString().slice(2, 10).replace(/-/g, '');
+      btn.textContent = fmt(periodStart) + '-' + fmt(periodEnd);
+    }
+
     function render() {
+      renderBreadcrumb();
+      renderPeriod();
       const content = document.getElementById('content');
       const title = document.getElementById('title');
-      const back = document.getElementById('back');
-      const toggle = document.getElementById('toggle-view');
 
-      toggle.textContent = view === 'grid' ? 'Lista' : 'Ikoner';
-      toggle.classList.toggle('active', view === 'list');
-
-      if (current === 'chaufforer') {
-        title.textContent = 'Chaufförer';
-        back.classList.remove('hidden');
-        const sorted = getSortedDrivers();
-        let lastCat = null;
+      if (path.length === 0) {
+        title.textContent = 'Åkeridata';
+        const stats = getStats();
+        content.innerHTML = `<div class="section">
+          <div class="row" onclick="openCat('inkort', 'Inkört')"><span class="label">Inkört</span><span class="value">${formatSEK(stats.inkort)}</span></div>
+          <div class="row" onclick="openCat('timmar', 'Timmar')"><span class="label">Arbetade timmar</span><span class="value">${formatTime(stats.timmar)}</span></div>
+          <div class="row" onclick="openCat('km', 'Km')"><span class="label">Körda km</span><span class="value">${stats.km.toFixed(1)} km</span></div>
+        </div>`;
+      } else if (path.length === 1) {
+        const cat = path[0].id;
+        title.textContent = path[0].label;
+        const cars = getCars();
         let html = '<div class="section">';
-        sorted.forEach(id => {
-          const d = drivers[id] || {};
-          const cat = d.category || 'normal';
-          if (cat !== lastCat) {
-            html += `<div class="section-header">${categories[cat] || cat}</div>`;
-            lastCat = cat;
-          }
-          const status = getDriverStatus(id);
-          const statusLabel = status === 'active' ? 'Aktiv' : status === 'pending' ? 'Väntar' : 'Inaktiv';
-          const firstName = getFirstName(id);
-          html += `<div class="driver-row cat-${cat}">
-            <span class="driver-id" onclick="editDriver('${id}')" style="cursor:pointer;">${id}</span>
-            <span class="driver-name" onclick="editDriver('${id}')" style="cursor:pointer; flex:1;">${firstName}</span>
-            <span class="driver-status status-${status}">${statusLabel}</span>
-            ${status === 'inactive' && cat !== 'avslutad' ? `<button class="btn-small" onclick="activateDriver('${id}')">Aktivera</button>` : ''}
-            ${status !== 'inactive' ? `<button class="btn-small" onclick="deactivateDriver('${id}')">Avaktivera</button>` : ''}
-          </div>`;
+        Object.entries(cars).sort().forEach(([car, data]) => {
+          let val = '';
+          if (cat === 'inkort') val = formatSEK(data.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
+          else if (cat === 'timmar') val = formatTime(data.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
+          else val = data.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
+          html += `<div class="row" onclick="openCar('${car}')"><span class="label">${car}</span><span class="value">${val}</span></div>`;
         });
         html += '</div>';
         content.innerHTML = html;
-      } else if (current === 'edit') {
-        title.textContent = 'Redigera ' + selectedDriver;
-        back.classList.remove('hidden');
-        const d = drivers[selectedDriver] || {};
-        content.innerHTML = `<div class="section">
-          <div class="form-group"><label>Namn</label><input id="f-name" value="${d.name || ''}"></div>
-          <div class="form-group"><label>Adress</label><input id="f-address" value="${d.address || ''}"></div>
-          <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${d.email || ''}"></div>
-          <div class="form-group"><label>Telefon</label><input id="f-phone" value="${d.phone || ''}"></div>
-          <div class="form-section">Närmast anhörig</div>
-          <div class="form-group"><label>Namn</label><input id="f-emergency-name" value="${d.emergency_name || ''}"></div>
-          <div class="form-group"><label>Telefon</label><input id="f-emergency-phone" value="${d.emergency_phone || ''}"></div>
-          <div class="form-group"><label>Relation</label><input id="f-emergency-relation" value="${d.emergency_relation || ''}" placeholder="T.ex. fru, man, förälder"></div>
-          <div class="form-section">Övrigt</div>
-          <div class="form-group"><label>Kategori</label>
-            <select id="f-category">
-              ${Object.entries(categories).map(([k, v]) => `<option value="${k}" ${d.category === k ? 'selected' : ''}>${v}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group"><label>Anteckningar</label><textarea id="f-notes">${d.notes || ''}</textarea></div>
-          <button onclick="saveDriver()" style="width:100%;">Spara</button>
-        </div>`;
-      } else if (current === 'activate') {
-        title.textContent = 'Aktivera ' + selectedDriver;
-        back.classList.remove('hidden');
-        if (!tempPassword) tempPassword = generatePassword();
-        content.innerHTML = `<div class="section">
-          <div class="password-box">
-            <p style="margin-bottom:8px;">Tillfälligt lösenord:</p>
-            <code>${tempPassword}</code>
-            <div style="margin-top:16px; display:flex; gap:8px; justify-content:center;">
-              <button onclick="sharePassword()">Dela</button>
-              <button onclick="confirmActivation()">Bekräfta</button>
-            </div>
-          </div>
-          <p style="margin-top:12px; font-size:14px; color:#718096; text-align:center;">Gäller i 24 timmar</p>
-        </div>`;
-      } else if (current === 'oversikt') {
-        title.textContent = 'Översikt';
-        back.classList.remove('hidden');
-        const allDrivers = getAllDrivers();
-        const active = allDrivers.filter(id => getDriverStatus(id) === 'active').length;
-        const pending = allDrivers.filter(id => getDriverStatus(id) === 'pending').length;
-        const inactive = allDrivers.filter(id => getDriverStatus(id) === 'inactive').length;
-        content.innerHTML = `<div class="section">
-          <div class="driver-row"><span>Aktiva</span><span>${active}</span></div>
-          <div class="driver-row"><span>Väntande</span><span>${pending}</span></div>
-          <div class="driver-row"><span>Inaktiva</span><span>${inactive}</span></div>
-          <div class="driver-row"><span>Totalt</span><span>${allDrivers.length}</span></div>
-        </div>`;
-      } else if (current === 'statistik') {
-        title.textContent = 'Statistik';
-        back.classList.remove('hidden');
-        const allTrips = (data.trips || []).filter(t => t.kredittyp !== '999');
-        const total = allTrips.reduce((s, t) => s + parseAmount(t.belopp), 0);
-        content.innerHTML = `<div class="section">
-          <div class="driver-row"><span>Antal chaufförer</span><span>${getAllDrivers().length}</span></div>
-          <div class="driver-row"><span>Antal körningar</span><span>${allTrips.length}</span></div>
-          <div class="driver-row"><span>Totalt inkört</span><span>${formatSEK(total)}</span></div>
-        </div>`;
-      } else {
-        title.textContent = 'Admin';
-        back.classList.add('hidden');
-        if (view === 'grid') {
-          content.innerHTML = `<div class="grid">${menu.map(m => `
-            <div class="icon" onclick="openMenu('${m.id}')">
-              <div class="emoji">${m.icon}</div>
-              <div class="label">${m.label}</div>
-            </div>
-          `).join('')}</div>`;
+      } else if (path.length === 2) {
+        const car = path[1].id;
+        const cat = path[0].id;
+        title.textContent = car;
+        const drivers = getDriversForCar(car);
+        let html = '<div class="section">';
+        Object.entries(drivers).sort().forEach(([id, data]) => {
+          let val = '';
+          if (cat === 'inkort') val = formatSEK(data.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
+          else if (cat === 'timmar') val = formatTime(data.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
+          else val = data.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
+          html += `<div class="row" onclick="openDriver('${id}')"><span class="label">${id}</span><span class="value">${val}</span></div>`;
+        });
+        html += '</div>';
+        content.innerHTML = html;
+      } else if (path.length === 3) {
+        const driverId = path[2].id;
+        const cat = path[0].id;
+        title.textContent = driverId;
+        const cars = getCars();
+        const car = path[1].id;
+        const drivers = getDriversForCar(car);
+        const driverData = drivers[driverId] || { shifts: [], trips: [] };
+        let html = '<div class="section">';
+        if (cat === 'inkort') {
+          driverData.trips.forEach(t => {
+            html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>`;
+          });
+        } else if (cat === 'timmar') {
+          driverData.shifts.forEach(s => {
+            const start = (s.start || '').split(' ')[1] || '';
+            const slut = (s.slut || '').split(' ')[1] || '';
+            html += `<div class="row"><span class="label">${start} – ${slut}</span><span class="value">${s.tid}</span></div>`;
+          });
         } else {
-          content.innerHTML = menu.map(m => `
-            <div class="list-item">
-              <div class="list-row" onclick="openMenu('${m.id}')">
-                <span style="font-size:20px;">${m.icon}</span>
-                <span>${m.label}</span>
-              </div>
-            </div>
-          `).join('');
+          driverData.trips.forEach(t => {
+            html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${parseAmount(t.kilometer).toFixed(1)} km</span></div>`;
+          });
         }
+        html += '</div>';
+        content.innerHTML = html;
       }
     }
 
-    function openMenu(id) { current = id; tempPassword = null; render(); }
-    function goHome() { current = null; tempPassword = null; render(); }
-    function goBack() { current = null; tempPassword = null; render(); }
-    function toggleView() {
-      view = view === 'grid' ? 'list' : 'grid';
-      localStorage.setItem('admin_view', view);
+    function openCat(id, label) {
+      path = [{ id, label }];
       render();
     }
 
-    function editDriver(id) {
-      selectedDriver = id;
-      current = 'edit';
+    function openCar(car) {
+      path.push({ id: car, label: car });
       render();
     }
 
-    async function saveDriver() {
-      const driverData = {
-        name: document.getElementById('f-name').value,
-        address: document.getElementById('f-address').value,
-        email: document.getElementById('f-email').value,
-        phone: document.getElementById('f-phone').value,
-        emergency_name: document.getElementById('f-emergency-name').value,
-        emergency_phone: document.getElementById('f-emergency-phone').value,
-        emergency_relation: document.getElementById('f-emergency-relation').value,
-        category: document.getElementById('f-category').value,
-        notes: document.getElementById('f-notes').value
-      };
-      if (driverData.category === 'avslutad') {
-        driverData.activated = false;
-      }
-      try {
-        await saveDriverToDb(selectedDriver, driverData);
-        drivers[selectedDriver] = { id: selectedDriver, ...driverData };
-        alert('Sparat!');
-        current = 'chaufforer';
-        render();
-      } catch (e) {
-        alert('Kunde inte spara: ' + e.message);
-      }
-    }
-
-    function activateDriver(id) {
-      selectedDriver = id;
-      tempPassword = generatePassword();
-      current = 'activate';
+    function openDriver(id) {
+      path.push({ id, label: id });
       render();
     }
 
-    async function deactivateDriver(id) {
-      if (confirm('Avaktivera ' + id + '?')) {
-        try {
-          await saveDriverToDb(id, { activated: false });
-          if (drivers[id]) drivers[id].activated = false;
-          render();
-        } catch (e) {
-          alert('Kunde inte avaktivera: ' + e.message);
-        }
-      }
+    function goBack() {
+      path.pop();
+      render();
     }
 
-    async function confirmActivation() {
-      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      const driverData = {
-        password: tempPassword,
-        expiry: expiry,
-        activated: true,
-        logged_in: false
-      };
-      try {
-        await saveDriverToDb(selectedDriver, driverData);
-        drivers[selectedDriver] = { ...drivers[selectedDriver], id: selectedDriver, ...driverData };
-        alert('Aktiverad!\nLösenord: ' + tempPassword);
-        current = 'chaufforer';
-        tempPassword = null;
-        render();
-      } catch (e) {
-        alert('Kunde inte aktivera: ' + e.message);
-      }
+    function goHome() {
+      path = [];
+      render();
     }
 
-    function sharePassword() {
-      const url = window.location.origin + '/index.html';
-      const text = `TaxiData\n\nLogga in: ${url}\nFöar-ID: ${selectedDriver}\nLösenord: ${tempPassword}\n\nLogga in inom 24 timmar, annars inaktiveras kontot.`;
-      if (navigator.share) {
-        navigator.share({ title: 'TaxiData', text });
-      } else {
-        navigator.clipboard.writeText(text);
-        alert('Kopierat!');
-      }
+    function goTo(index) {
+      path = path.slice(0, index + 1);
+      render();
     }
 
-    document.getElementById('home').onclick = goHome;
-    document.getElementById('back').onclick = goBack;
-    document.getElementById('toggle-view').onclick = toggleView;
-    loadData().then(render);
+    function editPeriod() {
+      const start = prompt('Startdatum (YYYY-MM-DD):', periodStart.toISOString().slice(0, 10));
+      if (!start) return;
+      const end = prompt('Slutdatum (YYYY-MM-DD):', periodEnd.toISOString().slice(0, 10));
+      if (!end) return;
+      periodStart = new Date(start);
+      periodEnd = new Date(end);
+      render();
+    }
+
+    loadData();
   </script>
 </body>
 </html>
