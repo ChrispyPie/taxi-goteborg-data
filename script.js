@@ -308,10 +308,13 @@ function render() {
   }
 
   let diffSubs = '';
-  if (currentTab !== 'dag') {
+  if (currentTab !== 'dag' && isCurrent && remainingShifts > 0) {
     diffSubs = `
       <div class="sub"><span>Inkört/skift</span><span>${formatSEK(inkortPerSkift)}</span></div>
       <div class="sub"><span>Behov/skift</span><span>${formatSEK(behovPerSkift)}</span></div>`;
+  } else if (currentTab !== 'dag') {
+    diffSubs = `
+      <div class="sub"><span>Inkört/skift</span><span>${formatSEK(inkortPerSkift)}</span></div>`;
   }
 
   let paymentSubs = `
