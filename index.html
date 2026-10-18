@@ -39,7 +39,7 @@
       <h2>TaxiData</h2>
       <input type="text" id="driver-id" placeholder="Förar-ID" autofocus>
       <input type="password" id="password" placeholder="Lösenord">
-      <button onclick="checkPassword()">Logga in</button>
+      <button id="login-btn">Logga in</button>
       <p id="login-error" style="color:#c53030; display:none; margin-top:8px;">Fel förar-ID eller lösenord</p>
     </div>
   </div>
@@ -134,7 +134,7 @@
         loginSuccess(id);
       } catch (e) {
         console.error(e);
-        errorEl.textContent = 'Kunde inte verifiera';
+        errorEl.textContent = 'Kunde inte verifiera: ' + e.message;
         errorEl.style.display = 'block';
       }
     }
@@ -253,6 +253,7 @@
       if (savedId) loginSuccess(savedId);
     }
 
+    document.getElementById('login-btn').addEventListener('click', checkPassword);
     document.getElementById('home').onclick = goHome;
     document.getElementById('back').onclick = goBack;
     document.getElementById('toggle-view').onclick = toggleView;
