@@ -45,12 +45,17 @@
     .status { font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 8px; }
     .status-active { background: #c6f6d5; color: #276749; }
     .status-inactive { background: #fed7d7; color: #c53030; }
-    .btn-small { padding: 4px 8px; font-size: 12px; margin-left: 8px; }
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; font-size: 13px; margin-bottom: 4px; color: #4a5568; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
     .form-group textarea { min-height: 60px; resize: vertical; }
+    .form-row { display: flex; gap: 8px; }
+    .form-row .form-group { flex: 1; }
     .form-section { font-size: 14px; font-weight: 600; margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+    .info-box { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 12px; }
+    .info-box h4 { margin-bottom: 8px; }
+    .info-box ul { margin-left: 16px; }
+    .info-box li { margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -164,11 +169,13 @@
     }
 
     function getDisplayName(id) {
-      const name = drivers[id]?.name || '';
-      if (!name) return id;
-      const parts = name.split(' ');
-      if (parts.length === 1) return parts[0];
-      return parts[0] + ' ' + parts[parts.length - 1][0];
+      const d = drivers[id];
+      if (!d) return id;
+      const first = d.first_name || '';
+      const last = d.last_name || '';
+      if (!first && !last) return id;
+      if (!last) return first;
+      return first + ' ' + last[0];
     }
 
     function inPeriod(dateStr) {
@@ -372,14 +379,31 @@
     function renderEditDriver(content) {
       const d = drivers[editingDriver] || {};
       content.innerHTML = `<div class="section" style="padding:16px;">
-        <div class="form-group"><label>Namn</label><input id="f-name" value="${d.name || ''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Förnamn</label><input id="f-first-name" value="${d.first_name || ''}"></div>
+          <div class="form-group"><label>Efternamn</label><input id="f-last-name" value="${d.last_name || ''}"></div>
+        </div>
         <div class="form-group"><label>Adress</label><input id="f-address" value="${d.address || ''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Postnummer</label><input id="f-postal" value="${d.postal_code || ''}"></div>
+          <div class="form-group"><label>Ort</label><input id="f-city" value="${d.city || ''}"></div>
+        </div>
         <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${d.email || ''}"></div>
         <div class="form-group"><label>Telefon</label><input id="f-phone" value="${d.phone || ''}"></div>
+        
         <div class="form-section">Närmast anhörig</div>
-        <div class="form-group"><label>Namn</label><input id="f-emergency-name" value="${d.emergency_name || ''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Förnamn</label><input id="f-emergency-first" value="${d.emergency_first_name || ''}"></div>
+          <div class="form-group"><label>Efternamn</label><input id="f-emergency-last" value="${d.emergency_last_name || ''}"></div>
+        </div>
+        <div class="form-group"><label>Adress</label><input id="f-emergency-address" value="${d.emergency_address || ''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Postnummer</label><input id="f-emergency-postal" value="${d.emergency_postal || ''}"></div>
+          <div class="form-group"><label>Ort</label><input id="f-emergency-city" value="${d.emergency_city || ''}"></div>
+        </div>
         <div class="form-group"><label>Telefon</label><input id="f-emergency-phone" value="${d.emergency_phone || ''}"></div>
         <div class="form-group"><label>Relation</label><input id="f-emergency-relation" value="${d.emergency_relation || ''}"></div>
+        
         <div class="form-section">Övrigt</div>
         <div class="form-group"><label>Kategori</label>
           <select id="f-category">
@@ -387,7 +411,19 @@
           </select>
         </div>
         <div class="form-group"><label>Anteckningar</label><textarea id="f-notes">${d.notes || ''}</textarea></div>
-        <button onclick="saveDriver()" style="width:100%; margin-top:8px;">Spara</button>
+        
+        <div class="info-box">
+          <h4>Rättigheter</h4>
+          <ul>
+            <li><b>Avslutad:</b> Kan ej logga in. Data används för statistik.</li>
+            <li><b>Semester:</b> Kan logga in, se data. Inga notiser.</li>
+            <li><b>Standard:</b> All data, statistik, kommunikation, notiser.</li>
+            <li><b>Admin:</b> Aktivera/avaktivera, skicka notiser. Ser ej personlig data.</li>
+            <li><b>Ägare:</b> Allt + redigera personlig information.</li>
+          </ul>
+        </div>
+        
+        <button onclick="saveDriver()" style="width:100%; margin-top:16px;">Spara</button>
         <div style="margin-top:16px; display:flex; gap:8px;">
           <button onclick="activateDriver('${editingDriver}')" style="flex:1;">Aktivera</button>
           <button onclick="deactivateDriver('${editingDriver}')" style="flex:1;">Avaktivera</button>
@@ -403,11 +439,18 @@
     async function saveDriver() {
       const driverData = {
         id: editingDriver,
-        name: document.getElementById('f-name').value,
+        first_name: document.getElementById('f-first-name').value,
+        last_name: document.getElementById('f-last-name').value,
         address: document.getElementById('f-address').value,
+        postal_code: document.getElementById('f-postal').value,
+        city: document.getElementById('f-city').value,
         email: document.getElementById('f-email').value,
         phone: document.getElementById('f-phone').value,
-        emergency_name: document.getElementById('f-emergency-name').value,
+        emergency_first_name: document.getElementById('f-emergency-first').value,
+        emergency_last_name: document.getElementById('f-emergency-last').value,
+        emergency_address: document.getElementById('f-emergency-address').value,
+        emergency_postal: document.getElementById('f-emergency-postal').value,
+        emergency_city: document.getElementById('f-emergency-city').value,
         emergency_phone: document.getElementById('f-emergency-phone').value,
         emergency_relation: document.getElementById('f-emergency-relation').value,
         category: document.getElementById('f-category').value,
