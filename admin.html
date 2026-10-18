@@ -120,7 +120,8 @@
     const days = ['sö', 'må', 'ti', 'on', 'to', 'fr', 'lö'];
     const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
-    let data = {};
+    let data = { trips: [], shifts: [] };
+    let loadedMonths = {};
     let drivers = {};
     let path = JSON.parse(localStorage.getItem('admin_path') || '[]');
     let category = localStorage.getItem('admin_category') || 'inkort';
@@ -179,6 +180,38 @@
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    function getMonthsInPeriod() {
+      const months = [];
+      const start = new Date(periodStart);
+      const end = new Date(periodEnd);
+      let current = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (current <= end) {
+        const ym = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0');
+        months.push(ym);
+        current.setMonth(current.getMonth() + 1);
+      }
+      return months;
+    }
+
+    async function loadMonth(ym) {
+      if (loadedMonths[ym]) return;
+      try {
+        const res = await fetch('data-' + ym + '.json?t=' + Date.now());
+        if (res.ok) {
+          const monthData = await res.json();
+          loadedMonths[ym] = monthData;
+        }
+      } catch (e) {}
+    }
+
+    function mergeLoadedData() {
+      data = { trips: [], shifts: [] };
+      Object.values(loadedMonths).forEach(m => {
+        if (m.trips) data.trips.push(...m.trips);
+        if (m.shifts) data.shifts.push(...m.shifts);
+      });
+    }
+
     async function supabaseFetch(path, options = {}) {
       const headers = {
         'apikey': SUPABASE_KEY,
@@ -198,8 +231,10 @@
     }
 
     async function loadData() {
-      const res = await fetch('data.json?t=' + Date.now());
-      data = await res.json();
+      const monthsToLoad = getMonthsInPeriod();
+      await Promise.all(monthsToLoad.map(loadMonth));
+      mergeLoadedData();
+
       try {
         const rows = await supabaseFetch('drivers?select=*');
         drivers = {};
@@ -256,23 +291,6 @@
       return (data.trips || []).filter(t => inPeriod(t.startdatum) && t.kredittyp !== '999');
     }
 
-    function getShifts() {
-      return (data.shifts || []).filter(s => {
-        const start = s.start || '';
-        const ymd = start.slice(0, 4) + '-' + start.slice(4, 6) + '-' + start.slice(6, 8);
-        return inPeriod(ymd);
-      });
-    }
-
-    function getDriverCar(driverId, dateYmd) {
-      const dateCompact = dateYmd.replace(/-/g, '');
-      const shift = (data.shifts || []).find(s => {
-        const start = (s.start || '').slice(0, 8);
-        return s.forar === driverId && start === dateCompact;
-      });
-      return shift ? shift.taxi : null;
-    }
-
     function getAllDriverIds() {
       const ids = new Set();
       (data.shifts || []).forEach(s => { if (s.forar) ids.add(s.forar); });
@@ -324,7 +342,7 @@
       document.getElementById('date-modal').classList.add('hidden');
     }
 
-    function confirmDate() {
+    async function confirmDate() {
       if (tempStart) {
         periodStart = tempStart;
         periodEnd = tempEnd || tempStart;
@@ -332,7 +350,7 @@
       selectedDay = null;
       selectedCar = null;
       closeDateModal();
-      render();
+      await loadData();
     }
 
     function prevMonth() { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); }
@@ -463,7 +481,7 @@
 
       const byCar = {};
       trips.forEach(t => {
-        const car = getDriverCar(t.forar, selectedDay) || 'Okänd';
+        const car = t.taxi || 'Okänd';
         if (!byCar[car]) byCar[car] = 0;
         byCar[car] += parseAmount(t.belopp);
       });
@@ -487,8 +505,7 @@
     function renderCarDrivers(content) {
       const trips = getTrips().filter(t => {
         if ((t.startdatum || '').slice(0, 10) !== selectedDay) return false;
-        const car = getDriverCar(t.forar, selectedDay);
-        return car === selectedCar;
+        return t.taxi === selectedCar;
       });
 
       const byDriver = {};
