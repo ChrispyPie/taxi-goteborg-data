@@ -57,6 +57,10 @@
   </div>
 
   <script>
+    const SUPABASE_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
+    const MASTER_PASSWORD = 'taxi2026';
+
     const menu = [
       { id: 'kordata', icon: '🚗', label: 'Körpassdata' },
       { id: 'statistik', icon: '📊', label: 'Statistik' },
@@ -76,23 +80,80 @@
     let expanded = {};
     let driverId = null;
 
-    function checkPassword() {
+    async function supabaseFetch(path) {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        }
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    async function checkPassword() {
       const id = document.getElementById('driver-id').value.trim();
       const pw = document.getElementById('password').value;
-      if (id && pw) {
-        driverId = id;
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-        document.getElementById('driver-label').textContent = id;
-        render();
-      } else {
-        document.getElementById('login-error').style.display = 'block';
+      const errorEl = document.getElementById('login-error');
+      errorEl.style.display = 'none';
+
+      if (!id || !pw) {
+        errorEl.textContent = 'Fyll i förar-ID och lösenord';
+        errorEl.style.display = 'block';
+        return;
       }
+
+      if (pw === MASTER_PASSWORD) {
+        loginSuccess(id);
+        return;
+      }
+
+      try {
+        const rows = await supabaseFetch('drivers?id=eq.' + id + '&select=*');
+        if (rows.length === 0) {
+          errorEl.textContent = 'Förar-ID finns inte';
+          errorEl.style.display = 'block';
+          return;
+        }
+        const driver = rows[0];
+        if (!driver.activated) {
+          errorEl.textContent = 'Kontot är inte aktiverat';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (driver.expiry && new Date(driver.expiry) < new Date()) {
+          errorEl.textContent = 'Lösenordet har gått ut';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (driver.password !== pw) {
+          errorEl.textContent = 'Fel lösenord';
+          errorEl.style.display = 'block';
+          return;
+        }
+        loginSuccess(id);
+      } catch (e) {
+        console.error(e);
+        errorEl.textContent = 'Kunde inte verifiera';
+        errorEl.style.display = 'block';
+      }
+    }
+
+    function loginSuccess(id) {
+      driverId = id;
+      localStorage.setItem('taxi_logged_in', '1');
+      localStorage.setItem('taxi_driver', id);
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('driver-label').textContent = id;
+      render();
     }
 
     function logout() {
       driverId = null;
       current = null;
+      localStorage.removeItem('taxi_logged_in');
+      localStorage.removeItem('taxi_driver');
       document.getElementById('app').classList.add('hidden');
       document.getElementById('login-screen').classList.remove('hidden');
       document.getElementById('driver-id').value = '';
@@ -185,6 +246,11 @@
       view = view === 'grid' ? 'list' : 'grid';
       localStorage.setItem('user_view', view);
       render();
+    }
+
+    if (localStorage.getItem('taxi_logged_in') === '1') {
+      const savedId = localStorage.getItem('taxi_driver');
+      if (savedId) loginSuccess(savedId);
     }
 
     document.getElementById('home').onclick = goHome;
