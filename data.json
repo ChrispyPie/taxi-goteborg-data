@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-18T23:33:25.793100Z",
+  "last_updated": "2026-10-18T23:41:17.897017Z",
   "forar": "710022",
   "shifts": [
     {
@@ -3918,6 +3918,15 @@
       "passnr": "119",
       "resor": "11",
       "forar": "829560"
+    },
+    {
+      "taxi": "A198",
+      "start": "20261018  15:12",
+      "slut": "20261019  00:54",
+      "tid": "9:42",
+      "passnr": "135",
+      "resor": "4",
+      "forar": "459910"
     }
   ],
   "trips": [
@@ -29794,6 +29803,19 @@
       "belopp": "700,00",
       "starttid": "23:28",
       "sluttid": "23:29",
+      "startdatum": "2026-10-18"
+    },
+    {
+      "kvittonr": "030123-01",
+      "forar": "710022",
+      "startzon": "268",
+      "slutzon": "409",
+      "kilometer": "29,011",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "649,00",
+      "starttid": "23:56",
+      "sluttid": "00:19",
       "startdatum": "2026-10-18"
     }
   ]
