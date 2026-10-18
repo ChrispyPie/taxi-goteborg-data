@@ -20,8 +20,9 @@
     .breadcrumb span { cursor: pointer; color: #3182ce; }
     .breadcrumb span:hover { text-decoration: underline; }
     .breadcrumb .sep { color: #a0aec0; }
-    .period { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; }
-    .period button { background: white; }
+    .period { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; align-items: center; }
+    .period button { background: white; flex: 1; }
+    .period input { position: absolute; opacity: 0; pointer-events: none; }
     .section { background: white; border-radius: 12px; margin: 16px; }
     .row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #edf2f7; cursor: pointer; }
     .row:hover { background: #f7fafc; }
@@ -39,7 +40,9 @@
   </header>
   <div class="breadcrumb" id="breadcrumb"></div>
   <div class="period hidden" id="period-bar">
-    <button id="period-btn" onclick="editPeriod()">Välj period</button>
+    <button id="period-btn" onclick="openDatePicker()">Välj period</button>
+    <input type="date" id="date-start" onchange="onDateChange()">
+    <input type="date" id="date-end" onchange="onDateChange()">
   </div>
   <div id="content"></div>
 
@@ -50,11 +53,15 @@
       { id: 'statistik', icon: '📈', label: 'Statistik' }
     ];
 
+    const days = ['sö', 'må', 'ti', 'on', 'to', 'fr', 'lö'];
+    const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+
     let data = {};
     let path = [];
     let periodStart = new Date();
     let periodEnd = new Date();
-    periodStart.setDate(periodStart.getDate() - 7);
+    periodStart.setDate(periodStart.getDate() - 1);
+    periodEnd.setDate(periodEnd.getDate() - 1);
 
     async function loadData() {
       const res = await fetch('data.json?t=' + Date.now());
@@ -80,6 +87,14 @@
       const h = Math.floor(minutes / 60);
       const m = minutes % 60;
       return h + ':' + String(m).padStart(2, '0');
+    }
+
+    function formatDate(d) {
+      return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+    }
+
+    function formatDateFull(d) {
+      return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' \'' + String(d.getFullYear()).slice(2);
     }
 
     function inPeriod(dateStr) {
@@ -165,8 +180,38 @@
 
     function renderPeriod() {
       const btn = document.getElementById('period-btn');
-      const fmt = d => d.toISOString().slice(2, 10).replace(/-/g, '');
-      btn.textContent = fmt(periodStart) + '-' + fmt(periodEnd);
+      const sameDay = periodStart.toDateString() === periodEnd.toDateString();
+      if (sameDay) {
+        btn.textContent = formatDate(periodStart);
+      } else {
+        btn.textContent = formatDateFull(periodStart) + ' – ' + formatDateFull(periodEnd);
+      }
+    }
+
+    function openDatePicker() {
+      const startInput = document.getElementById('date-start');
+      startInput.value = periodStart.toISOString().slice(0, 10);
+      startInput.showPicker();
+    }
+
+    function onDateChange() {
+      const startInput = document.getElementById('date-start');
+      const endInput = document.getElementById('date-end');
+      if (startInput.value && !endInput.value) {
+        endInput.value = startInput.value;
+        endInput.showPicker();
+      } else if (startInput.value && endInput.value) {
+        periodStart = new Date(startInput.value);
+        periodEnd = new Date(endInput.value);
+        if (periodEnd < periodStart) {
+          const temp = periodStart;
+          periodStart = periodEnd;
+          periodEnd = temp;
+        }
+        startInput.value = '';
+        endInput.value = '';
+        render();
+      }
     }
 
     function render() {
@@ -286,16 +331,6 @@
 
     function goTo(index) {
       path = path.slice(0, index + 1);
-      render();
-    }
-
-    function editPeriod() {
-      const start = prompt('Startdatum (YYYY-MM-DD):', periodStart.toISOString().slice(0, 10));
-      if (!start) return;
-      const end = prompt('Slutdatum (YYYY-MM-DD):', periodEnd.toISOString().slice(0, 10));
-      if (!end) return;
-      periodStart = new Date(start);
-      periodEnd = new Date(end);
       render();
     }
 
