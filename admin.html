@@ -172,6 +172,10 @@
       return '••••••••';
     }
 
+    function toYMD(d) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
     async function supabaseFetch(path, options = {}) {
       const headers = {
         'apikey': SUPABASE_KEY,
@@ -238,10 +242,10 @@
 
     function inPeriod(dateStr) {
       if (!dateStr) return false;
-      const clean = dateStr.replace(/\s/g, '').replace(/-/g, '');
-      const ymd = clean.slice(0, 4) + '-' + clean.slice(4, 6) + '-' + clean.slice(6, 8);
-      const date = new Date(ymd);
-      return date >= periodStart && date <= periodEnd;
+      const ymd = dateStr.slice(0, 10);
+      const startYMD = toYMD(periodStart);
+      const endYMD = toYMD(periodEnd);
+      return ymd >= startYMD && ymd <= endYMD;
     }
 
     function getTrips() {
@@ -385,13 +389,12 @@
     function renderAkeridata(content) {
       const trips = getTrips();
       const total = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
-      const sameDay = periodStart.toDateString() === periodEnd.toDateString();
+      const sameDay = toYMD(periodStart) === toYMD(periodEnd);
       const periodText = sameDay ? formatDate(periodStart) : formatDate(periodStart) + ' – ' + formatDate(periodEnd);
 
       const byDay = {};
       trips.forEach(t => {
-        const d = (t.startdatum || '').replace(/\s/g, '').replace(/-/g, '').slice(0, 8);
-        const ymd = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+        const ymd = (t.startdatum || '').slice(0, 10);
         if (!byDay[ymd]) byDay[ymd] = 0;
         byDay[ymd] += parseAmount(t.belopp);
       });
@@ -401,7 +404,8 @@
       html += '<div class="section">';
       html += `<div class="row total"><span class="label">Totalt</span><span class="value">${formatSEK(total)}</span></div>`;
       Object.entries(byDay).sort().reverse().forEach(([date, amount]) => {
-        const d = new Date(date);
+        const parts = date.split('-');
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         html += `<div class="row"><span class="label">${formatDate(d)}</span><span class="value">${formatSEK(amount)}</span></div>`;
       });
       html += '</div>';
