@@ -39,7 +39,7 @@
       <h2>TaxiData</h2>
       <input type="text" id="driver-id" placeholder="Förar-ID" autofocus>
       <input type="password" id="password" placeholder="Lösenord">
-      <button id="login-btn" onclick="alert('Klick!'); checkPassword();">Logga in</button>
+      <button id="login-btn" onclick="checkPassword();">Logga in</button>
       <p id="login-error" style="color:#c53030; display:none; margin-top:8px;">Fel förar-ID eller lösenord</p>
     </div>
   </div>
@@ -92,7 +92,6 @@
     }
 
     async function checkPassword() {
-      alert('checkPassword körs');
       const id = document.getElementById('driver-id').value.trim();
       const pw = document.getElementById('password').value;
       const errorEl = document.getElementById('login-error');
@@ -105,7 +104,6 @@
       }
 
       if (pw === MASTER_PASSWORD) {
-        alert('Master password match!');
         loginSuccess(id);
         return;
       }
@@ -142,13 +140,19 @@
     }
 
     function loginSuccess(id) {
+      alert('loginSuccess startar');
       driverId = id;
       localStorage.setItem('taxi_logged_in', '1');
       localStorage.setItem('taxi_driver', id);
+      alert('localStorage sparat');
       document.getElementById('login-screen').classList.add('hidden');
+      alert('login dold');
       document.getElementById('app').classList.remove('hidden');
+      alert('app visas');
       document.getElementById('driver-label').textContent = id;
+      alert('label satt');
       render();
+      alert('render klar');
     }
 
     function logout() {
@@ -248,11 +252,6 @@
       view = view === 'grid' ? 'list' : 'grid';
       localStorage.setItem('user_view', view);
       render();
-    }
-
-    if (localStorage.getItem('taxi_logged_in') === '1') {
-      const savedId = localStorage.getItem('taxi_driver');
-      if (savedId) loginSuccess(savedId);
     }
 
     document.getElementById('home').onclick = goHome;
