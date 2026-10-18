@@ -124,9 +124,8 @@
     let drivers = {};
     let path = JSON.parse(localStorage.getItem('admin_path') || '[]');
     let category = localStorage.getItem('admin_category') || 'inkort';
-    let periodStart = new Date();
+    let periodStart = new Date(2026, 9, 1);
     let periodEnd = new Date();
-    periodStart.setDate(periodStart.getDate() - 1);
     periodEnd.setDate(periodEnd.getDate() - 1);
     let tempStart = null;
     let tempEnd = null;
@@ -239,8 +238,8 @@
 
     function inPeriod(dateStr) {
       if (!dateStr) return false;
-      const d = dateStr.replace(/\s/g, '').slice(0, 8);
-      const ymd = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+      const clean = dateStr.replace(/\s/g, '').replace(/-/g, '');
+      const ymd = clean.slice(0, 4) + '-' + clean.slice(4, 6) + '-' + clean.slice(6, 8);
       const date = new Date(ymd);
       return date >= periodStart && date <= periodEnd;
     }
@@ -391,9 +390,10 @@
 
       const byDay = {};
       trips.forEach(t => {
-        const d = (t.startdatum || '').slice(0, 10);
-        if (!byDay[d]) byDay[d] = 0;
-        byDay[d] += parseAmount(t.belopp);
+        const d = (t.startdatum || '').replace(/\s/g, '').replace(/-/g, '').slice(0, 8);
+        const ymd = d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8);
+        if (!byDay[ymd]) byDay[ymd] = 0;
+        byDay[ymd] += parseAmount(t.belopp);
       });
 
       let html = `<div class="category-header">${catLabels[category]}</div>`;
