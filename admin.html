@@ -41,6 +41,10 @@
     .calendar .header { font-weight: 600; font-size: 12px; padding: 4px; }
     .modal-buttons { display: flex; gap: 8px; margin-top: 16px; }
     .modal-buttons button { flex: 1; }
+    .status { font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 8px; }
+    .status-active { background: #c6f6d5; color: #276749; }
+    .status-inactive { background: #fed7d7; color: #c53030; }
+    .btn-small { padding: 4px 8px; font-size: 12px; margin-left: 8px; }
   </style>
 </head>
 <body>
@@ -78,6 +82,9 @@
   </div>
 
   <script>
+    const SUPABASE_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
+
     const menu = [
       { id: 'akeridata', icon: '📊', label: 'Åkeridata' },
       { id: 'chaufforer', icon: '👥', label: 'Chaufförer' },
@@ -89,6 +96,7 @@
     const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
     let data = {};
+    let drivers = {};
     let path = [];
     let category = 'inkort';
     let periodStart = new Date();
@@ -99,9 +107,32 @@
     let tempEnd = null;
     let calMonth = new Date();
 
+    async function supabaseFetch(path, options = {}) {
+      const headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      };
+      if (options.headers) Object.assign(headers, options.headers);
+      const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+        method: options.method || 'GET',
+        headers,
+        body: options.body
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const text = await res.text();
+      return text ? JSON.parse(text) : {};
+    }
+
     async function loadData() {
       const res = await fetch('data.json?t=' + Date.now());
       data = await res.json();
+      try {
+        const rows = await supabaseFetch('drivers?select=*');
+        drivers = {};
+        if (Array.isArray(rows)) rows.forEach(r => { drivers[r.id] = r; });
+      } catch (e) { console.error(e); }
       render();
     }
 
@@ -129,6 +160,21 @@
       return (data.trips || []).filter(t => inPeriod(t.startdatum) && t.kredittyp !== '999');
     }
 
+    function getAllDriverIds() {
+      const ids = new Set();
+      (data.shifts || []).forEach(s => { if (s.forar) ids.add(s.forar); });
+      (data.trips || []).forEach(t => { if (t.forar) ids.add(t.forar); });
+      Object.keys(drivers).forEach(id => ids.add(id));
+      return Array.from(ids).sort();
+    }
+
+    function getDriverStatus(id) {
+      const d = drivers[id];
+      if (!d || !d.activated) return 'inactive';
+      if (d.expiry && new Date(d.expiry) > new Date()) return 'active';
+      return 'inactive';
+    }
+
     function renderBreadcrumb() {
       const bc = document.getElementById('breadcrumb');
       const back = document.getElementById('back');
@@ -140,7 +186,7 @@
         return;
       }
       back.classList.remove('hidden');
-      controls.classList.remove('hidden');
+      controls.classList.toggle('hidden', path[0].id !== 'akeridata');
       let html = '<span onclick="goHome()">Hem</span>';
       path.forEach((p, i) => {
         html += '<span class="sep">›</span>';
@@ -232,6 +278,9 @@
       } else if (path[0].id === 'akeridata') {
         title.textContent = 'Åkeridata';
         renderAkeridata(content);
+      } else if (path[0].id === 'chaufforer') {
+        title.textContent = 'Chaufförer';
+        renderChaufforer(content);
       } else {
         title.textContent = path[0].label;
         content.innerHTML = '<div class="section"><p style="padding:16px;">Kommer snart</p></div>';
@@ -261,6 +310,62 @@
       });
       html += '</div>';
       content.innerHTML = html;
+    }
+
+    function renderChaufforer(content) {
+      const ids = getAllDriverIds();
+      let html = '<div class="section">';
+      ids.forEach(id => {
+        const status = getDriverStatus(id);
+        const statusLabel = status === 'active' ? 'Aktiv' : 'Inaktiv';
+        const name = drivers[id]?.name || '';
+        html += `<div class="row">
+          <span class="label">${id}${name ? ' – ' + name : ''}</span>
+          <span class="status status-${status}">${statusLabel}</span>
+          ${status === 'inactive' ? `<button class="btn-small" onclick="activateDriver('${id}')">Aktivera</button>` : `<button class="btn-small" onclick="deactivateDriver('${id}')">Avaktivera</button>`}
+        </div>`;
+      });
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function generatePassword() {
+      const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+      let pw = '';
+      for (let i = 0; i < 6; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+      return pw;
+    }
+
+    async function activateDriver(id) {
+      const pw = generatePassword();
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      try {
+        await supabaseFetch('drivers', {
+          method: 'POST',
+          body: JSON.stringify({ id, password: pw, expiry, activated: true, logged_in: false }),
+          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
+        });
+        drivers[id] = { ...drivers[id], id, password: pw, expiry, activated: true };
+        alert('Aktiverad!\nLösenord: ' + pw);
+        render();
+      } catch (e) {
+        alert('Fel: ' + e.message);
+      }
+    }
+
+    async function deactivateDriver(id) {
+      if (!confirm('Avaktivera ' + id + '?')) return;
+      try {
+        await supabaseFetch('drivers', {
+          method: 'POST',
+          body: JSON.stringify({ id, activated: false }),
+          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
+        });
+        if (drivers[id]) drivers[id].activated = false;
+        render();
+      } catch (e) {
+        alert('Fel: ' + e.message);
+      }
     }
 
     function openMenu(id) {
