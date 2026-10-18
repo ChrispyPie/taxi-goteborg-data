@@ -1,0 +1,55 @@
+name: Scrape One Driver
+
+on:
+  workflow_dispatch:
+    inputs:
+      driver_id:
+        description: 'Förar-ID'
+        required: true
+        default: '710022'
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Run scrape
+        env:
+          STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
+          STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+        run: python scrape_one.py ${{ github.event.inputs.driver_id }}
+
+      - name: Commit
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data.json
+          git diff --staged --quiet || git commit -m "Scrape ${{ github.event.inputs.driver_id }} [skip ci]"
+          git pull --rebase origin main || git rebase --abort || true
+          git push || git push --force-with-lease
+
+      - name: Copy to gh-pages
+        run: |
+          git fetch origin gh-pages
+          git checkout gh-pages
+          git checkout main -- data.json
+          git add data.json
+          git diff --staged --quiet || git commit -m "Update data [skip ci]"
+          git push origin gh-pages || true
+          git checkout main
