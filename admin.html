@@ -257,7 +257,20 @@
     }
 
     function getShifts() {
-      return (data.shifts || []).filter(s => inPeriod(s.start));
+      return (data.shifts || []).filter(s => {
+        const start = s.start || '';
+        const ymd = start.slice(0, 4) + '-' + start.slice(4, 6) + '-' + start.slice(6, 8);
+        return inPeriod(ymd);
+      });
+    }
+
+    function getDriverCar(driverId, dateYmd) {
+      const dateCompact = dateYmd.replace(/-/g, '');
+      const shift = (data.shifts || []).find(s => {
+        const start = (s.start || '').slice(0, 8);
+        return s.forar === driverId && start === dateCompact;
+      });
+      return shift ? shift.taxi : null;
     }
 
     function getAllDriverIds() {
@@ -447,30 +460,24 @@
 
     function renderDayCars(content) {
       const trips = getTrips().filter(t => (t.startdatum || '').slice(0, 10) === selectedDay);
-      const shifts = getShifts().filter(s => (s.start || '').slice(0, 8) === selectedDay.replace(/-/g, ''));
 
       const byCar = {};
-      shifts.forEach(s => {
-        const car = s.taxi || 'Okänd';
-        if (!byCar[car]) byCar[car] = { amount: 0, driver: s.forar };
-      });
       trips.forEach(t => {
-        const shift = shifts.find(s => s.forar === t.forar);
-        const car = shift ? shift.taxi : 'Okänd';
-        if (!byCar[car]) byCar[car] = { amount: 0, driver: t.forar };
-        byCar[car].amount += parseAmount(t.belopp);
+        const car = getDriverCar(t.forar, selectedDay) || 'Okänd';
+        if (!byCar[car]) byCar[car] = 0;
+        byCar[car] += parseAmount(t.belopp);
       });
 
       const parts = selectedDay.split('-');
       const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      const total = Object.values(byCar).reduce((s, c) => s + c.amount, 0);
+      const total = Object.values(byCar).reduce((s, a) => s + a, 0);
 
-      let html = `<div class="category-header">${formatDate(d)}</div>`;
-      html += `<div class="period-display">${catLabels[category]}</div>`;
+      let html = `<div class="category-header">${catLabels[category]}</div>`;
+      html += `<div class="period-display">${formatDate(d)}</div>`;
       html += '<div class="section">';
       html += `<div class="row total"><span class="label">Totalt</span><span class="value">${formatSEK(total)}</span></div>`;
-      Object.entries(byCar).sort((a, b) => b[1].amount - a[1].amount).forEach(([car, info]) => {
-        html += `<div class="row" onclick="selectCar('${car}')"><span class="label">${car}</span><span class="value">${formatSEK(info.amount)}</span></div>`;
+      Object.entries(byCar).sort((a, b) => b[1] - a[1]).forEach(([car, amount]) => {
+        html += `<div class="row" onclick="selectCar('${car}')"><span class="label">${car}</span><span class="value">${formatSEK(amount)}</span></div>`;
       });
       html += '</div>';
       html += '<button onclick="selectedDay=null;render()" style="margin:16px;">← Tillbaka</button>';
@@ -478,20 +485,16 @@
     }
 
     function renderCarDrivers(content) {
-      const trips = getTrips().filter(t => (t.startdatum || '').slice(0, 10) === selectedDay);
-      const shifts = getShifts().filter(s => (s.start || '').slice(0, 8) === selectedDay.replace(/-/g, '') && s.taxi === selectedCar);
+      const trips = getTrips().filter(t => {
+        if ((t.startdatum || '').slice(0, 10) !== selectedDay) return false;
+        const car = getDriverCar(t.forar, selectedDay);
+        return car === selectedCar;
+      });
 
       const byDriver = {};
-      shifts.forEach(s => {
-        const driver = s.forar || 'Okänd';
-        if (!byDriver[driver]) byDriver[driver] = 0;
-      });
       trips.forEach(t => {
-        const shift = shifts.find(s => s.forar === t.forar);
-        if (shift) {
-          if (!byDriver[t.forar]) byDriver[t.forar] = 0;
-          byDriver[t.forar] += parseAmount(t.belopp);
-        }
+        if (!byDriver[t.forar]) byDriver[t.forar] = 0;
+        byDriver[t.forar] += parseAmount(t.belopp);
       });
 
       const total = Object.values(byDriver).reduce((s, a) => s + a, 0);
