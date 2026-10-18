@@ -43,7 +43,7 @@ def scrape_day(page, forar_id, date_str):
             document.getElementById('MainContent_tb_ResdatumTom').value = '{date_str}';
         }}
     """)
-    page.click("input[type='submit'], button:has-text('Sök')")
+    page.click("input[value='Sök']")
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(600)
 
@@ -96,7 +96,7 @@ def fetch_shifts(page, forar_id, from_date, to_date):
             document.getElementById('MainContent_tbxTomDat').value = '{to_date}';
         }}
     """)
-    page.click("input[type='submit'], button:has-text('Sök')")
+    page.click("input[value='Sök']")
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
 
