@@ -92,14 +92,17 @@
         }
       });
       if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const text = await res.text();
+      return text ? JSON.parse(text) : {};
     }
 
     async function loadDrivers() {
       try {
         const rows = await supabaseFetch('drivers?select=*');
         drivers = {};
-        rows.forEach(r => { drivers[r.id] = r; });
+        if (Array.isArray(rows)) {
+          rows.forEach(r => { drivers[r.id] = r; });
+        }
       } catch (e) {
         console.error('Load drivers failed:', e);
         drivers = {};
@@ -108,16 +111,11 @@
 
     async function saveDriverToDb(id, driverData) {
       const payload = { id, ...driverData };
-      try {
-        await supabaseFetch('drivers', {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          headers: { 'Prefer': 'resolution=merge-duplicates' }
-        });
-      } catch (e) {
-        console.error('Save failed:', e);
-        alert('Kunde inte spara: ' + e.message);
-      }
+      await supabaseFetch('drivers', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Prefer': 'resolution=merge-duplicates' }
+      });
     }
 
     async function loadData() {
@@ -329,11 +327,15 @@
       if (driverData.category === 'avslutad') {
         driverData.activated = false;
       }
-      await saveDriverToDb(selectedDriver, driverData);
-      drivers[selectedDriver] = { id: selectedDriver, ...driverData };
-      alert('Sparat!');
-      current = 'chaufforer';
-      render();
+      try {
+        await saveDriverToDb(selectedDriver, driverData);
+        drivers[selectedDriver] = { id: selectedDriver, ...driverData };
+        alert('Sparat!');
+        current = 'chaufforer';
+        render();
+      } catch (e) {
+        alert('Kunde inte spara: ' + e.message);
+      }
     }
 
     function activateDriver(id) {
@@ -345,9 +347,13 @@
 
     async function deactivateDriver(id) {
       if (confirm('Avaktivera ' + id + '?')) {
-        await saveDriverToDb(id, { activated: false });
-        if (drivers[id]) drivers[id].activated = false;
-        render();
+        try {
+          await saveDriverToDb(id, { activated: false });
+          if (drivers[id]) drivers[id].activated = false;
+          render();
+        } catch (e) {
+          alert('Kunde inte avaktivera: ' + e.message);
+        }
       }
     }
 
@@ -359,12 +365,16 @@
         activated: true,
         logged_in: false
       };
-      await saveDriverToDb(selectedDriver, driverData);
-      drivers[selectedDriver] = { ...drivers[selectedDriver], id: selectedDriver, ...driverData };
-      alert('Aktiverad!\nLösenord: ' + tempPassword);
-      current = 'chaufforer';
-      tempPassword = null;
-      render();
+      try {
+        await saveDriverToDb(selectedDriver, driverData);
+        drivers[selectedDriver] = { ...drivers[selectedDriver], id: selectedDriver, ...driverData };
+        alert('Aktiverad!\nLösenord: ' + tempPassword);
+        current = 'chaufforer';
+        tempPassword = null;
+        render();
+      } catch (e) {
+        alert('Kunde inte aktivera: ' + e.message);
+      }
     }
 
     function sharePassword() {
