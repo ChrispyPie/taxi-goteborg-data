@@ -2,8 +2,17 @@ name: Scrape STIG data
 
 on:
   schedule:
-    - cron: '0 * * * *'  # varje timme
-  workflow_dispatch:     # manuell körning
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: 'Från datum (YYYY-MM-DD, tom = igår)'
+        required: false
+        default: ''
+      to_date:
+        description: 'Till datum (YYYY-MM-DD, tom = idag)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -30,6 +39,8 @@ jobs:
         env:
           STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
           STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+          SCRAPE_FROM: ${{ github.event.inputs.from_date }}
+          SCRAPE_TO: ${{ github.event.inputs.to_date }}
         run: python scraper.py
 
       - name: Commit updated data
@@ -38,7 +49,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git add data.json || true
           git diff --staged --quiet || git commit -m "Update data from STIG [skip ci]"
-          git push
+          git push || true
 
       - name: Copy data to gh-pages
         run: |
@@ -47,5 +58,5 @@ jobs:
           git checkout main -- data.json
           git add data.json
           git diff --staged --quiet || git commit -m "Update data from scrape [skip ci]"
-          git push origin gh-pages
+          git push origin gh-pages || true
           git checkout main
