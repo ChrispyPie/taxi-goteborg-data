@@ -13,16 +13,13 @@
     #content { padding: 16px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
     .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
-    .icon:hover { border-color: #1a365d; }
     .icon .emoji { font-size: 32px; margin-bottom: 8px; }
     .icon .label { font-size: 13px; }
-    .breadcrumb { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .breadcrumb { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #e2e8f0; font-size: 14px; flex-wrap: wrap; }
     .breadcrumb span { cursor: pointer; color: #3182ce; }
-    .breadcrumb span:hover { text-decoration: underline; }
     .breadcrumb .sep { color: #a0aec0; }
-    .period { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; align-items: center; }
-    .period button { background: white; flex: 1; }
-    .period input { position: absolute; opacity: 0; pointer-events: none; }
+    .controls { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; }
+    .controls select, .controls button { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e0; }
     .section { background: white; border-radius: 12px; margin: 16px; }
     .row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #edf2f7; cursor: pointer; }
     .row:hover { background: #f7fafc; }
@@ -30,6 +27,16 @@
     .row .label { flex: 1; font-weight: 500; }
     .row .value { font-weight: 600; }
     .hidden { display: none; }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal-box { background: white; border-radius: 12px; padding: 16px; width: 90%; max-width: 320px; }
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+    .calendar .day { padding: 8px 4px; border-radius: 4px; cursor: pointer; }
+    .calendar .day:hover { background: #e2e8f0; }
+    .calendar .day.selected { background: #1a365d; color: white; }
+    .calendar .day.in-range { background: #bee3f8; }
+    .calendar .header { font-weight: 600; font-size: 12px; padding: 4px; }
+    .modal-buttons { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-buttons button { flex: 1; }
   </style>
 </head>
 <body>
@@ -39,12 +46,32 @@
     <button onclick="goHome()">🏠</button>
   </header>
   <div class="breadcrumb" id="breadcrumb"></div>
-  <div class="period hidden" id="period-bar">
-    <button id="period-btn" onclick="openDatePicker()">Välj period</button>
-    <input type="date" id="date-start" onchange="onDateChange()">
-    <input type="date" id="date-end" onchange="onDateChange()">
+  <div class="controls hidden" id="controls">
+    <select id="category" onchange="changeCategory()">
+      <option value="chauffor">Chaufför</option>
+      <option value="bil">Bil</option>
+      <option value="inkort">Inkört</option>
+      <option value="timmar">Timmar</option>
+      <option value="km">Km</option>
+    </select>
+    <button id="period-btn" onclick="openDateModal()">Period</button>
   </div>
   <div id="content"></div>
+
+  <div class="modal hidden" id="date-modal">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+        <button onclick="prevMonth()">‹</button>
+        <span id="cal-title"></span>
+        <button onclick="nextMonth()">›</button>
+      </div>
+      <div class="calendar" id="calendar"></div>
+      <div class="modal-buttons">
+        <button onclick="closeDateModal()">Avbryt</button>
+        <button onclick="confirmDate()">OK</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const menu = [
@@ -58,10 +85,14 @@
 
     let data = {};
     let path = [];
+    let category = 'chauffor';
     let periodStart = new Date();
     let periodEnd = new Date();
     periodStart.setDate(periodStart.getDate() - 1);
     periodEnd.setDate(periodEnd.getDate() - 1);
+    let tempStart = null;
+    let tempEnd = null;
+    let calMonth = new Date();
 
     async function loadData() {
       const res = await fetch('data.json?t=' + Date.now());
@@ -93,10 +124,6 @@
       return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
     }
 
-    function formatDateFull(d) {
-      return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()] + ' \'' + String(d.getFullYear()).slice(2);
-    }
-
     function inPeriod(dateStr) {
       if (!dateStr) return false;
       const d = dateStr.replace(/\s/g, '').slice(0, 8);
@@ -110,62 +137,21 @@
     }
 
     function getTrips() {
-      return (data.trips || []).filter(t => inPeriod(t.startdatum));
-    }
-
-    function getStats() {
-      const shifts = getShifts();
-      const trips = getTrips().filter(t => t.kredittyp !== '999');
-      const inkort = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
-      const timmar = shifts.reduce((s, sh) => s + parseTime(sh.tid), 0);
-      const km = trips.reduce((s, t) => s + parseAmount(t.kilometer), 0);
-      return { inkort, timmar, km, shifts, trips };
-    }
-
-    function getCars() {
-      const cars = {};
-      getShifts().forEach(s => {
-        const car = s.taxi || 'Okänd';
-        if (!cars[car]) cars[car] = { shifts: [], trips: [] };
-        cars[car].shifts.push(s);
-      });
-      getTrips().forEach(t => {
-        const shift = getShifts().find(s => s.forar === t.forar && inPeriod(s.start));
-        const car = shift?.taxi || 'Okänd';
-        if (!cars[car]) cars[car] = { shifts: [], trips: [] };
-        if (t.kredittyp !== '999') cars[car].trips.push(t);
-      });
-      return cars;
-    }
-
-    function getDriversForCar(car) {
-      const cars = getCars();
-      const drivers = {};
-      (cars[car]?.shifts || []).forEach(s => {
-        const id = s.forar;
-        if (!drivers[id]) drivers[id] = { shifts: [], trips: [] };
-        drivers[id].shifts.push(s);
-      });
-      (cars[car]?.trips || []).forEach(t => {
-        const id = t.forar;
-        if (!drivers[id]) drivers[id] = { shifts: [], trips: [] };
-        drivers[id].trips.push(t);
-      });
-      return drivers;
+      return (data.trips || []).filter(t => inPeriod(t.startdatum) && t.kredittyp !== '999');
     }
 
     function renderBreadcrumb() {
       const bc = document.getElementById('breadcrumb');
       const back = document.getElementById('back');
-      const periodBar = document.getElementById('period-bar');
+      const controls = document.getElementById('controls');
       if (path.length === 0) {
         bc.innerHTML = '';
         back.classList.add('hidden');
-        periodBar.classList.add('hidden');
+        controls.classList.add('hidden');
         return;
       }
       back.classList.remove('hidden');
-      periodBar.classList.remove('hidden');
+      controls.classList.remove('hidden');
       let html = '<span onclick="goHome()">Hem</span>';
       path.forEach((p, i) => {
         html += '<span class="sep">›</span>';
@@ -181,37 +167,71 @@
     function renderPeriod() {
       const btn = document.getElementById('period-btn');
       const sameDay = periodStart.toDateString() === periodEnd.toDateString();
-      if (sameDay) {
-        btn.textContent = formatDate(periodStart);
+      btn.textContent = sameDay ? formatDate(periodStart) : formatDate(periodStart) + ' – ' + formatDate(periodEnd);
+    }
+
+    function openDateModal() {
+      tempStart = new Date(periodStart);
+      tempEnd = null;
+      calMonth = new Date(periodStart);
+      renderCalendar();
+      document.getElementById('date-modal').classList.remove('hidden');
+    }
+
+    function closeDateModal() {
+      document.getElementById('date-modal').classList.add('hidden');
+    }
+
+    function confirmDate() {
+      if (tempStart) {
+        periodStart = tempStart;
+        periodEnd = tempEnd || tempStart;
+      }
+      closeDateModal();
+      render();
+    }
+
+    function prevMonth() { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); }
+    function nextMonth() { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); }
+
+    function renderCalendar() {
+      document.getElementById('cal-title').textContent = months[calMonth.getMonth()] + ' ' + calMonth.getFullYear();
+      const cal = document.getElementById('calendar');
+      const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+      const last = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0);
+      let html = days.map(d => `<div class="header">${d}</div>`).join('');
+      for (let i = 0; i < first.getDay(); i++) html += '<div></div>';
+      for (let d = 1; d <= last.getDate(); d++) {
+        const date = new Date(calMonth.getFullYear(), calMonth.getMonth(), d);
+        const isStart = tempStart && date.toDateString() === tempStart.toDateString();
+        const isEnd = tempEnd && date.toDateString() === tempEnd.toDateString();
+        const inRange = tempStart && tempEnd && date > tempStart && date < tempEnd;
+        const cls = isStart || isEnd ? 'selected' : inRange ? 'in-range' : '';
+        html += `<div class="day ${cls}" onclick="selectDate(${d})">${d}</div>`;
+      }
+      cal.innerHTML = html;
+    }
+
+    function selectDate(d) {
+      const date = new Date(calMonth.getFullYear(), calMonth.getMonth(), d);
+      if (!tempStart || tempEnd) {
+        tempStart = date;
+        tempEnd = null;
       } else {
-        btn.textContent = formatDateFull(periodStart) + ' – ' + formatDateFull(periodEnd);
-      }
-    }
-
-    function openDatePicker() {
-      const startInput = document.getElementById('date-start');
-      startInput.value = periodStart.toISOString().slice(0, 10);
-      startInput.showPicker();
-    }
-
-    function onDateChange() {
-      const startInput = document.getElementById('date-start');
-      const endInput = document.getElementById('date-end');
-      if (startInput.value && !endInput.value) {
-        endInput.value = startInput.value;
-        endInput.showPicker();
-      } else if (startInput.value && endInput.value) {
-        periodStart = new Date(startInput.value);
-        periodEnd = new Date(endInput.value);
-        if (periodEnd < periodStart) {
-          const temp = periodStart;
-          periodStart = periodEnd;
-          periodEnd = temp;
+        if (date < tempStart) {
+          tempEnd = tempStart;
+          tempStart = date;
+        } else {
+          tempEnd = date;
         }
-        startInput.value = '';
-        endInput.value = '';
-        render();
       }
+      renderCalendar();
+    }
+
+    function changeCategory() {
+      category = document.getElementById('category').value;
+      path = path.slice(0, 1);
+      render();
     }
 
     function render() {
@@ -229,73 +249,68 @@
           </div>
         `).join('')}</div>`;
       } else if (path[0].id === 'akeridata') {
+        title.textContent = 'Åkeridata';
         if (path.length === 1) {
-          title.textContent = 'Åkeridata';
-          const stats = getStats();
-          content.innerHTML = `<div class="section">
-            <div class="row" onclick="openCat('inkort', 'Inkört')"><span class="label">Inkört</span><span class="value">${formatSEK(stats.inkort)}</span></div>
-            <div class="row" onclick="openCat('timmar', 'Timmar')"><span class="label">Arbetade timmar</span><span class="value">${formatTime(stats.timmar)}</span></div>
-            <div class="row" onclick="openCat('km', 'Km')"><span class="label">Körda km</span><span class="value">${stats.km.toFixed(1)} km</span></div>
-          </div>`;
+          renderLevel1(content);
         } else if (path.length === 2) {
-          const cat = path[1].id;
-          title.textContent = path[1].label;
-          const cars = getCars();
-          let html = '<div class="section">';
-          Object.entries(cars).sort().forEach(([car, cdata]) => {
-            let val = '';
-            if (cat === 'inkort') val = formatSEK(cdata.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
-            else if (cat === 'timmar') val = formatTime(cdata.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
-            else val = cdata.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
-            html += `<div class="row" onclick="openCar('${car}')"><span class="label">${car}</span><span class="value">${val}</span></div>`;
-          });
-          html += '</div>';
-          content.innerHTML = html;
+          renderLevel2(content);
         } else if (path.length === 3) {
-          const car = path[2].id;
-          const cat = path[1].id;
-          title.textContent = car;
-          const drivers = getDriversForCar(car);
-          let html = '<div class="section">';
-          Object.entries(drivers).sort().forEach(([id, ddata]) => {
-            let val = '';
-            if (cat === 'inkort') val = formatSEK(ddata.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
-            else if (cat === 'timmar') val = formatTime(ddata.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
-            else val = ddata.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
-            html += `<div class="row" onclick="openDriver('${id}')"><span class="label">${id}</span><span class="value">${val}</span></div>`;
-          });
-          html += '</div>';
-          content.innerHTML = html;
+          renderLevel3(content);
         } else if (path.length === 4) {
-          const driverId = path[3].id;
-          const cat = path[1].id;
-          const car = path[2].id;
-          title.textContent = driverId;
-          const drivers = getDriversForCar(car);
-          const driverData = drivers[driverId] || { shifts: [], trips: [] };
-          let html = '<div class="section">';
-          if (cat === 'inkort') {
-            driverData.trips.forEach(t => {
-              html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>`;
-            });
-          } else if (cat === 'timmar') {
-            driverData.shifts.forEach(s => {
-              const start = (s.start || '').split(' ')[1] || '';
-              const slut = (s.slut || '').split(' ')[1] || '';
-              html += `<div class="row"><span class="label">${start} – ${slut}</span><span class="value">${s.tid}</span></div>`;
-            });
-          } else {
-            driverData.trips.forEach(t => {
-              html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${parseAmount(t.kilometer).toFixed(1)} km</span></div>`;
-            });
-          }
-          html += '</div>';
-          content.innerHTML = html;
+          renderLevel4(content);
         }
       } else {
         title.textContent = path[0].label;
         content.innerHTML = '<div class="section"><p style="padding:16px;">Kommer snart</p></div>';
       }
+    }
+
+    function renderLevel1(content) {
+      const shifts = getShifts();
+      const trips = getTrips();
+      let html = '<div class="section">';
+      if (category === 'chauffor') {
+        const drivers = {};
+        shifts.forEach(s => {
+          if (!drivers[s.forar]) drivers[s.forar] = { shifts: [], trips: [] };
+          drivers[s.forar].shifts.push(s);
+        });
+        trips.forEach(t => {
+          if (!drivers[t.forar]) drivers[t.forar] = { shifts: [], trips: [] };
+          drivers[t.forar].trips.push(t);
+        });
+        Object.entries(drivers).sort().forEach(([id, d]) => {
+          const inkort = d.trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
+          html += `<div class="row" onclick="drillDown('${id}', '${id}')"><span class="label">${id}</span><span class="value">${formatSEK(inkort)}</span></div>`;
+        });
+      } else if (category === 'bil') {
+        const cars = {};
+        shifts.forEach(s => {
+          const car = s.taxi || 'Okänd';
+          if (!cars[car]) cars[car] = { shifts: [], trips: [] };
+          cars[car].shifts.push(s);
+        });
+        Object.entries(cars).sort().forEach(([car, d]) => {
+          html += `<div class="row" onclick="drillDown('${car}', '${car}')"><span class="label">${car}</span><span class="value">${d.shifts.length} skift</span></div>`;
+        });
+      } else {
+        const total = trips.reduce((s, t) => s + parseAmount(t.belopp), 0);
+        html += `<div class="row"><span class="label">Totalt</span><span class="value">${formatSEK(total)}</span></div>`;
+      }
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function renderLevel2(content) {
+      content.innerHTML = '<div class="section"><p style="padding:16px;">Nivå 2 kommer</p></div>';
+    }
+
+    function renderLevel3(content) {
+      content.innerHTML = '<div class="section"><p style="padding:16px;">Nivå 3 kommer</p></div>';
+    }
+
+    function renderLevel4(content) {
+      content.innerHTML = '<div class="section"><p style="padding:16px;">Nivå 4 kommer</p></div>';
     }
 
     function openMenu(id) {
@@ -304,18 +319,8 @@
       render();
     }
 
-    function openCat(id, label) {
+    function drillDown(id, label) {
       path.push({ id, label });
-      render();
-    }
-
-    function openCar(car) {
-      path.push({ id: car, label: car });
-      render();
-    }
-
-    function openDriver(id) {
-      path.push({ id, label: id });
       render();
     }
 
