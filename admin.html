@@ -23,7 +23,7 @@
     .controls { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; align-items: center; }
     .controls select { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e0; }
     .controls button { padding: 8px 12px; }
-    .section { background: white; border-radius: 12px; margin: 16px; }
+    .section { background: white; border-radius: 12px; margin: 16px; padding: 16px; }
     .row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #edf2f7; cursor: pointer; }
     .row:hover { background: #f7fafc; }
     .row:last-child { border-bottom: none; }
@@ -45,6 +45,11 @@
     .status-active { background: #c6f6d5; color: #276749; }
     .status-inactive { background: #fed7d7; color: #c53030; }
     .btn-small { padding: 4px 8px; font-size: 12px; margin-left: 8px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 13px; margin-bottom: 4px; color: #4a5568; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
+    .form-group textarea { min-height: 60px; resize: vertical; }
+    .form-section { font-size: 14px; font-weight: 600; margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
   </style>
 </head>
 <body>
@@ -92,6 +97,7 @@
     ];
 
     const catLabels = { inkort: 'Inkört', timmar: 'Timmar', km: 'Km', chauffor: 'Chaufför', bil: 'Bil' };
+    const userCategories = { agare: 'Ägare', admin: 'Admin', normal: 'Normal', semester: 'Semester', avslutad: 'Avslutad' };
     const days = ['sö', 'må', 'ti', 'on', 'to', 'fr', 'lö'];
     const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
@@ -106,6 +112,7 @@
     let tempStart = null;
     let tempEnd = null;
     let calMonth = new Date();
+    let editingDriver = null;
 
     async function supabaseFetch(path, options = {}) {
       const headers = {
@@ -279,8 +286,13 @@
         title.textContent = 'Åkeridata';
         renderAkeridata(content);
       } else if (path[0].id === 'chaufforer') {
-        title.textContent = 'Chaufförer';
-        renderChaufforer(content);
+        if (editingDriver) {
+          title.textContent = 'Redigera ' + editingDriver;
+          renderEditDriver(content);
+        } else {
+          title.textContent = 'Chaufförer';
+          renderChaufforer(content);
+        }
       } else {
         title.textContent = path[0].label;
         content.innerHTML = '<div class="section"><p style="padding:16px;">Kommer snart</p></div>';
@@ -319,14 +331,73 @@
         const status = getDriverStatus(id);
         const statusLabel = status === 'active' ? 'Aktiv' : 'Inaktiv';
         const name = drivers[id]?.name || '';
-        html += `<div class="row">
+        const cat = drivers[id]?.category || 'normal';
+        html += `<div class="row" onclick="editDriver('${id}')">
           <span class="label">${id}${name ? ' – ' + name : ''}</span>
           <span class="status status-${status}">${statusLabel}</span>
-          ${status === 'inactive' ? `<button class="btn-small" onclick="activateDriver('${id}')">Aktivera</button>` : `<button class="btn-small" onclick="deactivateDriver('${id}')">Avaktivera</button>`}
         </div>`;
       });
       html += '</div>';
       content.innerHTML = html;
+    }
+
+    function renderEditDriver(content) {
+      const d = drivers[editingDriver] || {};
+      content.innerHTML = `<div class="section">
+        <div class="form-group"><label>Namn</label><input id="f-name" value="${d.name || ''}"></div>
+        <div class="form-group"><label>Adress</label><input id="f-address" value="${d.address || ''}"></div>
+        <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${d.email || ''}"></div>
+        <div class="form-group"><label>Telefon</label><input id="f-phone" value="${d.phone || ''}"></div>
+        <div class="form-section">Närmast anhörig</div>
+        <div class="form-group"><label>Namn</label><input id="f-emergency-name" value="${d.emergency_name || ''}"></div>
+        <div class="form-group"><label>Telefon</label><input id="f-emergency-phone" value="${d.emergency_phone || ''}"></div>
+        <div class="form-group"><label>Relation</label><input id="f-emergency-relation" value="${d.emergency_relation || ''}"></div>
+        <div class="form-section">Övrigt</div>
+        <div class="form-group"><label>Kategori</label>
+          <select id="f-category">
+            ${Object.entries(userCategories).map(([k, v]) => `<option value="${k}" ${d.category === k ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Anteckningar</label><textarea id="f-notes">${d.notes || ''}</textarea></div>
+        <button onclick="saveDriver()" style="width:100%; margin-top:8px;">Spara</button>
+        <div style="margin-top:16px; display:flex; gap:8px;">
+          <button onclick="activateDriver('${editingDriver}')" style="flex:1;">Aktivera</button>
+          <button onclick="deactivateDriver('${editingDriver}')" style="flex:1;">Avaktivera</button>
+        </div>
+      </div>`;
+    }
+
+    function editDriver(id) {
+      editingDriver = id;
+      render();
+    }
+
+    async function saveDriver() {
+      const driverData = {
+        id: editingDriver,
+        name: document.getElementById('f-name').value,
+        address: document.getElementById('f-address').value,
+        email: document.getElementById('f-email').value,
+        phone: document.getElementById('f-phone').value,
+        emergency_name: document.getElementById('f-emergency-name').value,
+        emergency_phone: document.getElementById('f-emergency-phone').value,
+        emergency_relation: document.getElementById('f-emergency-relation').value,
+        category: document.getElementById('f-category').value,
+        notes: document.getElementById('f-notes').value
+      };
+      try {
+        await supabaseFetch('drivers', {
+          method: 'POST',
+          body: JSON.stringify(driverData),
+          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
+        });
+        drivers[editingDriver] = { ...drivers[editingDriver], ...driverData };
+        alert('Sparat!');
+        editingDriver = null;
+        render();
+      } catch (e) {
+        alert('Fel: ' + e.message);
+      }
     }
 
     function generatePassword() {
@@ -371,21 +442,28 @@
     function openMenu(id) {
       const item = menu.find(m => m.id === id);
       path = [{ id, label: item.label }];
+      editingDriver = null;
       render();
     }
 
     function goBack() {
-      path.pop();
+      if (editingDriver) {
+        editingDriver = null;
+      } else {
+        path.pop();
+      }
       render();
     }
 
     function goHome() {
       path = [];
+      editingDriver = null;
       render();
     }
 
     function goTo(index) {
       path = path.slice(0, index + 1);
+      editingDriver = null;
       render();
     }
 
