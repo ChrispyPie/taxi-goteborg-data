@@ -43,7 +43,6 @@
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
     .form-group textarea { min-height: 60px; resize: vertical; }
     .section-header { font-size: 12px; font-weight: 600; color: #718096; padding: 8px 12px; background: #f7fafc; margin-top: 16px; }
-    .data-btns { display: flex; gap: 8px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -54,14 +53,15 @@
     <button id="toggle-view">Ikoner</button>
   </header>
   <div id="content"></div>
-  <input type="file" id="import-file" accept=".json" class="hidden">
 
   <script>
+    const SUPABASE_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
+
     const menu = [
       { id: 'oversikt', icon: '📊', label: 'Översikt' },
       { id: 'chaufforer', icon: '👥', label: 'Chaufförer' },
-      { id: 'statistik', icon: '📈', label: 'Statistik' },
-      { id: 'data', icon: '💾', label: 'Data' }
+      { id: 'statistik', icon: '📈', label: 'Statistik' }
     ];
 
     const categories = {
@@ -79,6 +79,46 @@
     let selectedDriver = null;
     let tempPassword = null;
 
+    async function supabaseFetch(path, options = {}) {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+        ...options,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+          ...options.headers
+        }
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    async function loadDrivers() {
+      try {
+        const rows = await supabaseFetch('drivers?select=*');
+        drivers = {};
+        rows.forEach(r => { drivers[r.id] = r; });
+      } catch (e) {
+        console.error('Load drivers failed:', e);
+        drivers = {};
+      }
+    }
+
+    async function saveDriverToDb(id, driverData) {
+      const payload = { id, ...driverData };
+      try {
+        await supabaseFetch('drivers', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: { 'Prefer': 'resolution=merge-duplicates' }
+        });
+      } catch (e) {
+        console.error('Save failed:', e);
+        alert('Kunde inte spara: ' + e.message);
+      }
+    }
+
     async function loadData() {
       try {
         const dataRes = await fetch('data.json?t=' + Date.now());
@@ -86,22 +126,7 @@
       } catch (e) {
         console.error(e);
       }
-      const saved = localStorage.getItem('taxi_drivers');
-      if (saved) {
-        drivers = JSON.parse(saved);
-      } else {
-        try {
-          const driversRes = await fetch('drivers.json?t=' + Date.now());
-          const driversData = await driversRes.json();
-          drivers = driversData.drivers || {};
-        } catch (e) {
-          drivers = {};
-        }
-      }
-    }
-
-    function saveToStorage() {
-      localStorage.setItem('taxi_drivers', JSON.stringify(drivers));
+      await loadDrivers();
     }
 
     function generatePassword() {
@@ -115,6 +140,7 @@
       const ids = new Set();
       (data.shifts || []).forEach(s => { if (s.forar) ids.add(s.forar); });
       (data.trips || []).forEach(t => { if (t.forar) ids.add(t.forar); });
+      Object.keys(drivers).forEach(id => ids.add(id));
       return Array.from(ids);
     }
 
@@ -136,7 +162,7 @@
       if (!d) return 'inactive';
       if (d.category === 'avslutad') return 'inactive';
       if (d.activated && d.expiry && new Date(d.expiry) > new Date()) {
-        return d.loggedIn ? 'active' : 'pending';
+        return d.logged_in ? 'active' : 'pending';
       }
       return 'inactive';
     }
@@ -152,30 +178,6 @@
 
     function parseAmount(str) {
       return parseFloat((str || '0').replace(/\s/g, '').replace(',', '.')) || 0;
-    }
-
-    function exportData() {
-      const blob = new Blob([JSON.stringify({ drivers }, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'drivers.json';
-      a.click();
-    }
-
-    function importData(file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const imported = JSON.parse(e.target.result);
-          drivers = imported.drivers || imported;
-          saveToStorage();
-          alert('Importerat!');
-          render();
-        } catch (err) {
-          alert('Fel vid import');
-        }
-      };
-      reader.readAsText(file);
     }
 
     function render() {
@@ -245,16 +247,6 @@
           </div>
           <p style="margin-top:12px; font-size:14px; color:#718096; text-align:center;">Gäller i 24 timmar</p>
         </div>`;
-      } else if (current === 'data') {
-        title.textContent = 'Data';
-        back.classList.remove('hidden');
-        content.innerHTML = `<div class="section">
-          <p style="margin-bottom:12px;">Data sparas i webbläsaren. Exportera för att spara på annan enhet.</p>
-          <div class="data-btns">
-            <button onclick="exportData()">Exportera</button>
-            <button onclick="document.getElementById('import-file').click()">Importera</button>
-          </div>
-        </div>`;
       } else if (current === 'oversikt') {
         title.textContent = 'Översikt';
         back.classList.remove('hidden');
@@ -316,18 +308,20 @@
       render();
     }
 
-    function saveDriver() {
-      if (!drivers[selectedDriver]) drivers[selectedDriver] = {};
-      drivers[selectedDriver].name = document.getElementById('f-name').value;
-      drivers[selectedDriver].address = document.getElementById('f-address').value;
-      drivers[selectedDriver].email = document.getElementById('f-email').value;
-      drivers[selectedDriver].phone = document.getElementById('f-phone').value;
-      drivers[selectedDriver].category = document.getElementById('f-category').value;
-      drivers[selectedDriver].notes = document.getElementById('f-notes').value;
-      if (drivers[selectedDriver].category === 'avslutad') {
-        drivers[selectedDriver].activated = false;
+    async function saveDriver() {
+      const driverData = {
+        name: document.getElementById('f-name').value,
+        address: document.getElementById('f-address').value,
+        email: document.getElementById('f-email').value,
+        phone: document.getElementById('f-phone').value,
+        category: document.getElementById('f-category').value,
+        notes: document.getElementById('f-notes').value
+      };
+      if (driverData.category === 'avslutad') {
+        driverData.activated = false;
       }
-      saveToStorage();
+      await saveDriverToDb(selectedDriver, driverData);
+      drivers[selectedDriver] = { id: selectedDriver, ...driverData };
       alert('Sparat!');
       current = 'chaufforer';
       render();
@@ -340,22 +334,24 @@
       render();
     }
 
-    function deactivateDriver(id) {
+    async function deactivateDriver(id) {
       if (confirm('Avaktivera ' + id + '?')) {
+        await saveDriverToDb(id, { activated: false });
         if (drivers[id]) drivers[id].activated = false;
-        saveToStorage();
         render();
       }
     }
 
-    function confirmActivation() {
+    async function confirmActivation() {
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      if (!drivers[selectedDriver]) drivers[selectedDriver] = {};
-      drivers[selectedDriver].password = tempPassword;
-      drivers[selectedDriver].expiry = expiry;
-      drivers[selectedDriver].activated = true;
-      drivers[selectedDriver].loggedIn = false;
-      saveToStorage();
+      const driverData = {
+        password: tempPassword,
+        expiry: expiry,
+        activated: true,
+        logged_in: false
+      };
+      await saveDriverToDb(selectedDriver, driverData);
+      drivers[selectedDriver] = { ...drivers[selectedDriver], id: selectedDriver, ...driverData };
       alert('Aktiverad!\nLösenord: ' + tempPassword);
       current = 'chaufforer';
       tempPassword = null;
@@ -376,9 +372,6 @@
     document.getElementById('home').onclick = goHome;
     document.getElementById('back').onclick = goBack;
     document.getElementById('toggle-view').onclick = toggleView;
-    document.getElementById('import-file').onchange = (e) => {
-      if (e.target.files[0]) importData(e.target.files[0]);
-    };
     loadData().then(render);
   </script>
 </body>
