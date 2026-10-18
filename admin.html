@@ -124,7 +124,8 @@
     let drivers = {};
     let path = JSON.parse(localStorage.getItem('admin_path') || '[]');
     let category = localStorage.getItem('admin_category') || 'inkort';
-    let periodStart = new Date(2026, 9, 1);
+    let periodStart = new Date();
+    periodStart.setDate(periodStart.getDate() - 1);
     let periodEnd = new Date();
     periodEnd.setDate(periodEnd.getDate() - 1);
     let tempStart = null;
