@@ -2,7 +2,7 @@
 """
 STIG scraper – hämtar data för alla förare.
 Körs varje timme via GitHub Actions.
-Scrapar endast från gårdagen och framåt.
+Scrapar gårdagen + idag. Hoppar över befintliga kvitton.
 """
 
 import os
@@ -114,23 +114,20 @@ def fetch_shifts(page, forar_id, from_date, to_date):
     return shifts
 
 def scrape_driver(page, forar_id, existing, start_date, today):
-    updated = 0
+    new_count = 0
     current = start_date
     while current <= today:
         date_str = current.strftime("%Y-%m-%d")
         receipts = scrape_day(page, forar_id, date_str)
         for kvitto in receipts:
-            if kvitto in existing and not existing[kvitto].get("belopp"):
-                detail = scrape_trip_detail(page, kvitto)
-                existing[kvitto].update(detail)
-                existing[kvitto]["forar"] = forar_id
-                updated += 1
-            elif kvitto not in existing:
-                detail = scrape_trip_detail(page, kvitto)
-                existing[kvitto] = {"kvittonr": kvitto, "forar": forar_id, **detail}
-                updated += 1
+            if kvitto in existing:
+                continue
+            detail = scrape_trip_detail(page, kvitto)
+            existing[kvitto] = {"kvittonr": kvitto, "forar": forar_id, **detail}
+            new_count += 1
+            print(f"    Ny: {kvitto}")
         current += timedelta(days=1)
-    return updated
+    return new_count
 
 def main():
     if not PASSWORD:
@@ -160,6 +157,8 @@ def main():
     from_str = yesterday.strftime("%Y-%m-%d")
     to_str = today.strftime("%Y-%m-%d")
 
+    print(f"Scrapar {from_str} till {to_str}")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
@@ -169,17 +168,20 @@ def main():
             browser.close()
             return
 
-        total = 0
+        total_new = 0
         for forar_id in DRIVERS:
             print(f"Förare {forar_id}:")
-            total += scrape_driver(page, forar_id, existing, yesterday, today)
+            new_count = scrape_driver(page, forar_id, existing, yesterday, today)
+            total_new += new_count
             new_shifts = fetch_shifts(page, forar_id, from_str, to_str)
+            added = 0
             for s in new_shifts:
                 key = (s.get("passnr"), forar_id)
                 if key not in seen:
                     seen.add(key)
                     all_shifts.append(s)
-            print(f"  {len(new_shifts)} skift")
+                    added += 1
+            print(f"  {new_count} nya kvitton, {added} nya skift")
 
         data["trips"] = list(existing.values())
         data["shifts"] = all_shifts
@@ -188,7 +190,7 @@ def main():
         with open("data.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"Totalt {total} uppdateringar, {len(all_shifts)} skift")
+        print(f"Totalt {total_new} nya kvitton, {len(all_shifts)} skift")
         browser.close()
 
 if __name__ == "__main__":
