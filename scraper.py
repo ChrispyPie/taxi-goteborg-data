@@ -2,6 +2,7 @@
 """
 STIG scraper – hämtar data för alla förare.
 Körs varje timme via GitHub Actions.
+Scrapar endast från gårdagen och framåt.
 """
 
 import os
@@ -154,9 +155,9 @@ def main():
             s["forar"] = forar
             all_shifts.append(s)
 
-    start_date = datetime(2026, 9, 1)
     today = datetime.now()
-    from_str = start_date.strftime("%Y-%m-%d")
+    yesterday = today - timedelta(days=1)
+    from_str = yesterday.strftime("%Y-%m-%d")
     to_str = today.strftime("%Y-%m-%d")
 
     with sync_playwright() as p:
@@ -171,7 +172,7 @@ def main():
         total = 0
         for forar_id in DRIVERS:
             print(f"Förare {forar_id}:")
-            total += scrape_driver(page, forar_id, existing, start_date, today)
+            total += scrape_driver(page, forar_id, existing, yesterday, today)
             new_shifts = fetch_shifts(page, forar_id, from_str, to_str)
             for s in new_shifts:
                 key = (s.get("passnr"), forar_id)
