@@ -43,6 +43,7 @@
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
     .form-group textarea { min-height: 60px; resize: vertical; }
     .section-header { font-size: 12px; font-weight: 600; color: #718096; padding: 8px 12px; background: #f7fafc; margin-top: 16px; }
+    .form-section { font-size: 14px; font-weight: 600; margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
   </style>
 </head>
 <body>
@@ -224,6 +225,11 @@
           <div class="form-group"><label>Adress</label><input id="f-address" value="${d.address || ''}"></div>
           <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${d.email || ''}"></div>
           <div class="form-group"><label>Telefon</label><input id="f-phone" value="${d.phone || ''}"></div>
+          <div class="form-section">Närmast anhörig</div>
+          <div class="form-group"><label>Namn</label><input id="f-emergency-name" value="${d.emergency_name || ''}"></div>
+          <div class="form-group"><label>Telefon</label><input id="f-emergency-phone" value="${d.emergency_phone || ''}"></div>
+          <div class="form-group"><label>Relation</label><input id="f-emergency-relation" value="${d.emergency_relation || ''}" placeholder="T.ex. fru, man, förälder"></div>
+          <div class="form-section">Övrigt</div>
           <div class="form-group"><label>Kategori</label>
             <select id="f-category">
               ${Object.entries(categories).map(([k, v]) => `<option value="${k}" ${d.category === k ? 'selected' : ''}>${v}</option>`).join('')}
@@ -314,6 +320,9 @@
         address: document.getElementById('f-address').value,
         email: document.getElementById('f-email').value,
         phone: document.getElementById('f-phone').value,
+        emergency_name: document.getElementById('f-emergency-name').value,
+        emergency_phone: document.getElementById('f-emergency-phone').value,
+        emergency_relation: document.getElementById('f-emergency-relation').value,
         category: document.getElementById('f-category').value,
         notes: document.getElementById('f-notes').value
       };
