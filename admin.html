@@ -11,6 +11,11 @@
     header h1 { font-size: 18px; flex: 1; text-align: center; }
     button { background: white; border: 2px solid #1a365d; color: #1a365d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
     #content { padding: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
+    .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
+    .icon:hover { border-color: #1a365d; }
+    .icon .emoji { font-size: 32px; margin-bottom: 8px; }
+    .icon .label { font-size: 13px; }
     .breadcrumb { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: white; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
     .breadcrumb span { cursor: pointer; color: #3182ce; }
     .breadcrumb span:hover { text-decoration: underline; }
@@ -29,16 +34,22 @@
 <body>
   <header>
     <button id="back" class="hidden" onclick="goBack()">←</button>
-    <h1 id="title">Åkeridata</h1>
+    <h1 id="title">Admin</h1>
     <button onclick="goHome()">🏠</button>
   </header>
   <div class="breadcrumb" id="breadcrumb"></div>
-  <div class="period">
+  <div class="period hidden" id="period-bar">
     <button id="period-btn" onclick="editPeriod()">Välj period</button>
   </div>
   <div id="content"></div>
 
   <script>
+    const menu = [
+      { id: 'akeridata', icon: '📊', label: 'Åkeridata' },
+      { id: 'chaufforer', icon: '👥', label: 'Chaufförer' },
+      { id: 'statistik', icon: '📈', label: 'Statistik' }
+    ];
+
     let data = {};
     let path = [];
     let periodStart = new Date();
@@ -131,12 +142,15 @@
     function renderBreadcrumb() {
       const bc = document.getElementById('breadcrumb');
       const back = document.getElementById('back');
+      const periodBar = document.getElementById('period-bar');
       if (path.length === 0) {
         bc.innerHTML = '';
         back.classList.add('hidden');
+        periodBar.classList.add('hidden');
         return;
       }
       back.classList.remove('hidden');
+      periodBar.classList.remove('hidden');
       let html = '<span onclick="goHome()">Hem</span>';
       path.forEach((p, i) => {
         html += '<span class="sep">›</span>';
@@ -162,73 +176,91 @@
       const title = document.getElementById('title');
 
       if (path.length === 0) {
-        title.textContent = 'Åkeridata';
-        const stats = getStats();
-        content.innerHTML = `<div class="section">
-          <div class="row" onclick="openCat('inkort', 'Inkört')"><span class="label">Inkört</span><span class="value">${formatSEK(stats.inkort)}</span></div>
-          <div class="row" onclick="openCat('timmar', 'Timmar')"><span class="label">Arbetade timmar</span><span class="value">${formatTime(stats.timmar)}</span></div>
-          <div class="row" onclick="openCat('km', 'Km')"><span class="label">Körda km</span><span class="value">${stats.km.toFixed(1)} km</span></div>
-        </div>`;
-      } else if (path.length === 1) {
-        const cat = path[0].id;
-        title.textContent = path[0].label;
-        const cars = getCars();
-        let html = '<div class="section">';
-        Object.entries(cars).sort().forEach(([car, data]) => {
-          let val = '';
-          if (cat === 'inkort') val = formatSEK(data.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
-          else if (cat === 'timmar') val = formatTime(data.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
-          else val = data.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
-          html += `<div class="row" onclick="openCar('${car}')"><span class="label">${car}</span><span class="value">${val}</span></div>`;
-        });
-        html += '</div>';
-        content.innerHTML = html;
-      } else if (path.length === 2) {
-        const car = path[1].id;
-        const cat = path[0].id;
-        title.textContent = car;
-        const drivers = getDriversForCar(car);
-        let html = '<div class="section">';
-        Object.entries(drivers).sort().forEach(([id, data]) => {
-          let val = '';
-          if (cat === 'inkort') val = formatSEK(data.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
-          else if (cat === 'timmar') val = formatTime(data.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
-          else val = data.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
-          html += `<div class="row" onclick="openDriver('${id}')"><span class="label">${id}</span><span class="value">${val}</span></div>`;
-        });
-        html += '</div>';
-        content.innerHTML = html;
-      } else if (path.length === 3) {
-        const driverId = path[2].id;
-        const cat = path[0].id;
-        title.textContent = driverId;
-        const cars = getCars();
-        const car = path[1].id;
-        const drivers = getDriversForCar(car);
-        const driverData = drivers[driverId] || { shifts: [], trips: [] };
-        let html = '<div class="section">';
-        if (cat === 'inkort') {
-          driverData.trips.forEach(t => {
-            html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>`;
+        title.textContent = 'Admin';
+        content.innerHTML = `<div class="grid">${menu.map(m => `
+          <div class="icon" onclick="openMenu('${m.id}')">
+            <div class="emoji">${m.icon}</div>
+            <div class="label">${m.label}</div>
+          </div>
+        `).join('')}</div>`;
+      } else if (path[0].id === 'akeridata') {
+        if (path.length === 1) {
+          title.textContent = 'Åkeridata';
+          const stats = getStats();
+          content.innerHTML = `<div class="section">
+            <div class="row" onclick="openCat('inkort', 'Inkört')"><span class="label">Inkört</span><span class="value">${formatSEK(stats.inkort)}</span></div>
+            <div class="row" onclick="openCat('timmar', 'Timmar')"><span class="label">Arbetade timmar</span><span class="value">${formatTime(stats.timmar)}</span></div>
+            <div class="row" onclick="openCat('km', 'Km')"><span class="label">Körda km</span><span class="value">${stats.km.toFixed(1)} km</span></div>
+          </div>`;
+        } else if (path.length === 2) {
+          const cat = path[1].id;
+          title.textContent = path[1].label;
+          const cars = getCars();
+          let html = '<div class="section">';
+          Object.entries(cars).sort().forEach(([car, cdata]) => {
+            let val = '';
+            if (cat === 'inkort') val = formatSEK(cdata.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
+            else if (cat === 'timmar') val = formatTime(cdata.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
+            else val = cdata.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
+            html += `<div class="row" onclick="openCar('${car}')"><span class="label">${car}</span><span class="value">${val}</span></div>`;
           });
-        } else if (cat === 'timmar') {
-          driverData.shifts.forEach(s => {
-            const start = (s.start || '').split(' ')[1] || '';
-            const slut = (s.slut || '').split(' ')[1] || '';
-            html += `<div class="row"><span class="label">${start} – ${slut}</span><span class="value">${s.tid}</span></div>`;
+          html += '</div>';
+          content.innerHTML = html;
+        } else if (path.length === 3) {
+          const car = path[2].id;
+          const cat = path[1].id;
+          title.textContent = car;
+          const drivers = getDriversForCar(car);
+          let html = '<div class="section">';
+          Object.entries(drivers).sort().forEach(([id, ddata]) => {
+            let val = '';
+            if (cat === 'inkort') val = formatSEK(ddata.trips.reduce((s, t) => s + parseAmount(t.belopp), 0));
+            else if (cat === 'timmar') val = formatTime(ddata.shifts.reduce((s, sh) => s + parseTime(sh.tid), 0));
+            else val = ddata.trips.reduce((s, t) => s + parseAmount(t.kilometer), 0).toFixed(1) + ' km';
+            html += `<div class="row" onclick="openDriver('${id}')"><span class="label">${id}</span><span class="value">${val}</span></div>`;
           });
-        } else {
-          driverData.trips.forEach(t => {
-            html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${parseAmount(t.kilometer).toFixed(1)} km</span></div>`;
-          });
+          html += '</div>';
+          content.innerHTML = html;
+        } else if (path.length === 4) {
+          const driverId = path[3].id;
+          const cat = path[1].id;
+          const car = path[2].id;
+          title.textContent = driverId;
+          const drivers = getDriversForCar(car);
+          const driverData = drivers[driverId] || { shifts: [], trips: [] };
+          let html = '<div class="section">';
+          if (cat === 'inkort') {
+            driverData.trips.forEach(t => {
+              html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>`;
+            });
+          } else if (cat === 'timmar') {
+            driverData.shifts.forEach(s => {
+              const start = (s.start || '').split(' ')[1] || '';
+              const slut = (s.slut || '').split(' ')[1] || '';
+              html += `<div class="row"><span class="label">${start} – ${slut}</span><span class="value">${s.tid}</span></div>`;
+            });
+          } else {
+            driverData.trips.forEach(t => {
+              html += `<div class="row"><span class="label">${t.kvittonr}</span><span class="value">${parseAmount(t.kilometer).toFixed(1)} km</span></div>`;
+            });
+          }
+          html += '</div>';
+          content.innerHTML = html;
         }
-        html += '</div>';
-        content.innerHTML = html;
+      } else {
+        title.textContent = path[0].label;
+        content.innerHTML = '<div class="section"><p style="padding:16px;">Kommer snart</p></div>';
       }
     }
 
+    function openMenu(id) {
+      const item = menu.find(m => m.id === id);
+      path = [{ id, label: item.label }];
+      render();
+    }
+
     function openCat(id, label) {
-      path = [{ id, label }];
+      path.push({ id, label });
       render();
     }
 
