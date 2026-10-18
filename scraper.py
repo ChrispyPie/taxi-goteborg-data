@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-STIG scraper – hämtar data för flera förare.
+STIG scraper – hämtar data för alla förare.
+Körs varje timme via GitHub Actions.
 """
 
 import os
@@ -12,7 +13,11 @@ STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
 PASSWORD = os.environ.get("STIG_PASSWORD", "")
 
-DRIVERS = ["710022", "844601"]
+DRIVERS = [
+    "154711", "169327", "179629", "179764", "179890",
+    "417480", "459910", "472245", "631047", "682204",
+    "693340", "710022", "738104", "788962", "829560", "844601"
+]
 
 def login(page):
     page.goto(f"{STIG_URL}/Login.aspx")
@@ -77,14 +82,14 @@ def scrape_trip_detail(page, kvitto):
         print(f"Detalj misslyckades för {kvitto}: {e}")
         return {}
 
-def fetch_shifts(page, forar_id):
+def fetch_shifts(page, forar_id, from_date, to_date):
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
     page.evaluate(f"""
         () => {{
             document.getElementById('MainContent_tbxForarId').value = '{forar_id}';
-            document.getElementById('MainContent_tbxFromDat').value = '2026-10-01';
-            document.getElementById('MainContent_tbxTomDat').value = '2026-10-17';
+            document.getElementById('MainContent_tbxFromDat').value = '{from_date}';
+            document.getElementById('MainContent_tbxTomDat').value = '{to_date}';
         }}
     """)
     page.click("input[type='submit'], button:has-text('Sök')")
@@ -112,17 +117,14 @@ def scrape_driver(page, forar_id, existing, start_date, today):
     current = start_date
     while current <= today:
         date_str = current.strftime("%Y-%m-%d")
-        print(f"  {date_str}...")
         receipts = scrape_day(page, forar_id, date_str)
         for kvitto in receipts:
             if kvitto in existing and not existing[kvitto].get("belopp"):
-                print(f"    Uppdaterar {kvitto}")
                 detail = scrape_trip_detail(page, kvitto)
                 existing[kvitto].update(detail)
                 existing[kvitto]["forar"] = forar_id
                 updated += 1
             elif kvitto not in existing:
-                print(f"    Ny: {kvitto}")
                 detail = scrape_trip_detail(page, kvitto)
                 existing[kvitto] = {"kvittonr": kvitto, "forar": forar_id, **detail}
                 updated += 1
@@ -142,20 +144,20 @@ def main():
 
     existing = {t.get("kvittonr"): t for t in data.get("trips", [])}
 
-    # Keep shifts for drivers NOT in DRIVERS list, and dedupe by passnr+forar
     seen = set()
     all_shifts = []
     for s in data.get("shifts", []):
         forar = s.get("forar") or "710022"
-        if forar not in DRIVERS:
-            key = (s.get("passnr"), forar)
-            if key not in seen:
-                seen.add(key)
-                s["forar"] = forar
-                all_shifts.append(s)
+        key = (s.get("passnr"), forar)
+        if key not in seen:
+            seen.add(key)
+            s["forar"] = forar
+            all_shifts.append(s)
 
-    start_date = datetime(2026, 10, 1)
+    start_date = datetime(2026, 9, 1)
     today = datetime.now()
+    from_str = start_date.strftime("%Y-%m-%d")
+    to_str = today.strftime("%Y-%m-%d")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -170,13 +172,13 @@ def main():
         for forar_id in DRIVERS:
             print(f"Förare {forar_id}:")
             total += scrape_driver(page, forar_id, existing, start_date, today)
-            print(f"  Hämtar skift...")
-            new_shifts = fetch_shifts(page, forar_id)
+            new_shifts = fetch_shifts(page, forar_id, from_str, to_str)
             for s in new_shifts:
                 key = (s.get("passnr"), forar_id)
                 if key not in seen:
                     seen.add(key)
                     all_shifts.append(s)
+            print(f"  {len(new_shifts)} skift")
 
         data["trips"] = list(existing.values())
         data["shifts"] = all_shifts
