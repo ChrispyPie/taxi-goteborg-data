@@ -154,7 +154,8 @@
           html += '<div class="emoji">' + menu[i].icon + '</div>';
           html += '<div class="label">' + menu[i].label + '</div></div>';
         }
-        if (driverData.category === 'admin' || driverData.category === 'agare') {
+        var cat = driverData.category;
+        if (cat === 'admin' || cat === 'agare' || cat === 'superadmin') {
           html += '<div class="icon" onclick="location.href=\'admin.html\'">';
           html += '<div class="emoji">🔐</div>';
           html += '<div class="label">Admin</div></div>';
