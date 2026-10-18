@@ -10,7 +10,7 @@
     header { background: #e8f1f8; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #d0e0ea; }
     header h1 { font-size: 18px; flex: 1; }
     button { background: white; border: 2px solid #1a365d; color: #1a365d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-    #content { padding: 16px; }
+    #content { padding: 16px; padding-bottom: 80px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; }
     .icon { background: white; border: 1px solid #cbd5e0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; }
     .icon .emoji { font-size: 32px; margin-bottom: 8px; }
@@ -21,6 +21,13 @@
     .login-box h2 { margin-bottom: 16px; }
     .login-box input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 16px; }
     .login-box button { width: 100%; padding: 10px; }
+    .profile-btn { background: none; border: none; font-weight: 600; cursor: pointer; padding: 4px 8px; }
+    .profile-menu { position: absolute; right: 16px; top: 50px; background: white; border: 1px solid #cbd5e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; z-index: 100; min-width: 160px; }
+    .profile-menu.show { display: block; }
+    .profile-menu div { padding: 12px 16px; cursor: pointer; }
+    .profile-menu div:hover { background: #f7fafc; }
+    .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #d0e0ea; padding: 8px 16px; display: flex; justify-content: center; }
+    .bottom-bar button { background: none; border: none; font-size: 20px; padding: 8px; }
   </style>
 </head>
 <body>
@@ -39,11 +46,17 @@
       <button id="back" style="display:none;">←</button>
       <button id="home">🏠</button>
       <h1 id="title">TaxiData</h1>
-      <span id="driver-label"></span>
-      <button id="toggle-view">Lista</button>
-      <button id="logout">Logga ut</button>
+      <button class="profile-btn" id="profile-btn" onclick="toggleProfile()">...</button>
     </header>
+    <div class="profile-menu" id="profile-menu">
+      <div id="full-name" style="font-weight:600; border-bottom:1px solid #e2e8f0;"></div>
+      <div onclick="openProfile()">Profil</div>
+      <div onclick="logout()">Logga ut</div>
+    </div>
     <div id="content">Laddar...</div>
+    <div class="bottom-bar">
+      <button id="toggle-view" onclick="toggleView()">📋</button>
+    </div>
   </div>
 
   <script>
@@ -57,9 +70,10 @@
       { id: 'installningar', icon: '⚙️', label: 'Inställningar' }
     ];
 
-    var view = 'grid';
+    var view = localStorage.getItem('user_view') || 'grid';
     var current = null;
     var driverId = null;
+    var driverData = { first_name: '', last_name: '' };
 
     function checkPassword() {
       var id = document.getElementById('driver-id').value;
@@ -78,7 +92,8 @@
       driverId = localStorage.getItem('taxi_driver') || 'okänd';
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
-      document.getElementById('driver-label').textContent = driverId;
+      document.getElementById('profile-btn').textContent = driverData.first_name || driverId;
+      document.getElementById('full-name').textContent = (driverData.first_name + ' ' + driverData.last_name).trim() || driverId;
       render();
     }
 
@@ -88,12 +103,33 @@
       location.reload();
     }
 
+    function toggleProfile() {
+      document.getElementById('profile-menu').classList.toggle('show');
+    }
+
+    function openProfile() {
+      document.getElementById('profile-menu').classList.remove('show');
+      current = 'profil';
+      render();
+    }
+
+    function toggleView() {
+      view = view === 'grid' ? 'list' : 'grid';
+      localStorage.setItem('user_view', view);
+      document.getElementById('toggle-view').textContent = view === 'grid' ? '📋' : '☰';
+      render();
+    }
+
     function render() {
       var content = document.getElementById('content');
       var title = document.getElementById('title');
       var back = document.getElementById('back');
 
-      if (current) {
+      if (current === 'profil') {
+        title.textContent = 'Profil';
+        back.style.display = 'inline-block';
+        content.innerHTML = '<div class="section"><p>Profil kommer snart</p></div>';
+      } else if (current) {
         title.textContent = current;
         back.style.display = 'inline-block';
         content.innerHTML = '<div class="section"><p>Kommer snart: ' + current + '</p></div>';
@@ -118,12 +154,19 @@
 
     function goHome() {
       current = null;
+      document.getElementById('profile-menu').classList.remove('show');
       render();
     }
 
     document.getElementById('home').onclick = goHome;
     document.getElementById('back').onclick = goHome;
-    document.getElementById('logout').onclick = logout;
+    document.getElementById('toggle-view').textContent = view === 'grid' ? '📋' : '☰';
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#profile-btn') && !e.target.closest('#profile-menu')) {
+        document.getElementById('profile-menu').classList.remove('show');
+      }
+    });
 
     if (localStorage.getItem('taxi_logged_in') === '1') {
       showApp();
