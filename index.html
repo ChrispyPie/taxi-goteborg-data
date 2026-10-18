@@ -82,7 +82,7 @@
 
     var current = null;
     var driverId = null;
-    var driverData = { first_name: '', last_name: '' };
+    var driverData = { first_name: '', last_name: '', category: '' };
 
     function checkPassword() {
       var id = document.getElementById('driver-id').value;
@@ -97,11 +97,25 @@
       }
     }
 
-    function showMenu() {
+    async function loadDriverData() {
+      try {
+        var res = await fetch('https://lpfdryvukqmjlgenuzpb.supabase.co/rest/v1/drivers?id=eq.' + driverId + '&select=*', {
+          headers: {
+            'apikey': 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP',
+            'Authorization': 'Bearer sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP'
+          }
+        });
+        var rows = await res.json();
+        if (rows && rows[0]) driverData = rows[0];
+      } catch (e) {}
+    }
+
+    async function showMenu() {
       driverId = localStorage.getItem('taxi_driver') || 'okänd';
+      await loadDriverData();
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
-      var fullName = (driverData.first_name + ' ' + driverData.last_name).trim();
+      var fullName = ((driverData.first_name || '') + ' ' + (driverData.last_name || '')).trim();
       document.getElementById('full-name').textContent = fullName || driverId;
       renderMenu();
     }
@@ -139,6 +153,11 @@
           html += '<div class="icon" onclick="openItem(\'' + menu[i].id + '\')">';
           html += '<div class="emoji">' + menu[i].icon + '</div>';
           html += '<div class="label">' + menu[i].label + '</div></div>';
+        }
+        if (driverData.category === 'admin' || driverData.category === 'agare') {
+          html += '<div class="icon" onclick="location.href=\'admin.html\'">';
+          html += '<div class="emoji">🔐</div>';
+          html += '<div class="label">Admin</div></div>';
         }
         html += '</div>';
         content.innerHTML = html;
