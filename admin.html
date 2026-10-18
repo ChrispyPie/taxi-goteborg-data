@@ -49,7 +49,7 @@
     .form-group label { display: block; font-size: 13px; margin-bottom: 4px; color: #4a5568; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
     .form-group textarea { min-height: 60px; resize: vertical; }
-    .form-group input:disabled, .form-group textarea:disabled { background: #edf2f7; color: #a0aec0; }
+    .form-group input:disabled, .form-group textarea:disabled, .form-group select:disabled { background: #edf2f7; color: #a0aec0; }
     .form-row { display: flex; gap: 8px; }
     .form-row .form-group { flex: 1; }
     .form-section { font-size: 14px; font-weight: 600; margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
@@ -115,8 +115,8 @@
     ];
 
     const catLabels = { inkort: 'Inkört', timmar: 'Timmar', km: 'Km', chauffor: 'Chaufför', bil: 'Bil' };
-    const userCategories = { agare: 'Ägare', admin: 'Admin', standard: 'Standard', semester: 'Semester', avslutad: 'Avslutad' };
-    const catOrder = ['agare', 'admin', 'standard', 'semester', 'avslutad'];
+    const userCategories = { superadmin: 'Superadmin', agare: 'Ägare', admin: 'Admin', standard: 'Standard', semester: 'Semester', avslutad: 'Avslutad' };
+    const catOrder = ['superadmin', 'agare', 'admin', 'standard', 'semester', 'avslutad'];
     const days = ['sö', 'må', 'ti', 'on', 'to', 'fr', 'lö'];
     const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
@@ -134,14 +134,38 @@
     let editingDriver = localStorage.getItem('admin_editing') || null;
     let currentUserId = localStorage.getItem('taxi_driver') || '';
 
-    function isOwner() {
+    function getMyCategory() {
       const me = drivers[currentUserId];
-      return me && me.category === 'agare';
+      return me ? me.category : '';
+    }
+
+    function isOwner() {
+      return getMyCategory() === 'agare';
+    }
+
+    function isSuperAdmin() {
+      return getMyCategory() === 'superadmin';
     }
 
     function hasAdminAccess() {
-      const me = drivers[currentUserId];
-      return me && (me.category === 'admin' || me.category === 'agare');
+      const cat = getMyCategory();
+      return cat === 'admin' || cat === 'agare' || cat === 'superadmin';
+    }
+
+    function canEditCategory(targetCat) {
+      const myCat = getMyCategory();
+      if (myCat === 'superadmin') return true;
+      if (myCat === 'agare') return targetCat !== 'superadmin';
+      if (myCat === 'admin') return ['standard', 'semester', 'avslutad'].includes(targetCat);
+      return false;
+    }
+
+    function getAllowedCategories() {
+      const myCat = getMyCategory();
+      if (myCat === 'superadmin') return Object.entries(userCategories);
+      if (myCat === 'agare') return Object.entries(userCategories).filter(([k]) => k !== 'superadmin');
+      if (myCat === 'admin') return Object.entries(userCategories).filter(([k]) => ['standard', 'semester', 'avslutad'].includes(k));
+      return [];
     }
 
     function maskValue(val) {
@@ -414,42 +438,47 @@
     function renderEditDriver(content) {
       const d = drivers[editingDriver] || {};
       const owner = isOwner();
-      const disabled = owner ? '' : 'disabled';
+      const targetCat = d.category || 'standard';
+      const canEdit = canEditCategory(targetCat);
+      const personalDisabled = owner ? '' : 'disabled';
+      const catDisabled = canEdit ? '' : 'disabled';
       const v = (val) => owner ? (val || '') : maskValue(val);
+      const allowedCats = getAllowedCategories();
 
       content.innerHTML = `<div class="section" style="padding:16px;">
         <div class="form-row">
-          <div class="form-group"><label>Förnamn</label><input id="f-first-name" value="${v(d.first_name)}" ${disabled}></div>
-          <div class="form-group"><label>Efternamn</label><input id="f-last-name" value="${v(d.last_name)}" ${disabled}></div>
+          <div class="form-group"><label>Förnamn</label><input id="f-first-name" value="${v(d.first_name)}" ${personalDisabled}></div>
+          <div class="form-group"><label>Efternamn</label><input id="f-last-name" value="${v(d.last_name)}" ${personalDisabled}></div>
         </div>
-        <div class="form-group"><label>Adress</label><input id="f-address" value="${v(d.address)}" ${disabled}></div>
+        <div class="form-group"><label>Adress</label><input id="f-address" value="${v(d.address)}" ${personalDisabled}></div>
         <div class="form-row">
-          <div class="form-group"><label>Postnummer</label><input id="f-postal" value="${v(d.postal_code)}" ${disabled}></div>
-          <div class="form-group"><label>Ort</label><input id="f-city" value="${v(d.city)}" ${disabled}></div>
+          <div class="form-group"><label>Postnummer</label><input id="f-postal" value="${v(d.postal_code)}" ${personalDisabled}></div>
+          <div class="form-group"><label>Ort</label><input id="f-city" value="${v(d.city)}" ${personalDisabled}></div>
         </div>
-        <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${v(d.email)}" ${disabled}></div>
-        <div class="form-group"><label>Telefon</label><input id="f-phone" value="${v(d.phone)}" ${disabled}></div>
+        <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${v(d.email)}" ${personalDisabled}></div>
+        <div class="form-group"><label>Telefon</label><input id="f-phone" value="${v(d.phone)}" ${personalDisabled}></div>
         
         <div class="form-section">Närmast anhörig</div>
         <div class="form-row">
-          <div class="form-group"><label>Förnamn</label><input id="f-emergency-first" value="${v(d.emergency_first_name)}" ${disabled}></div>
-          <div class="form-group"><label>Efternamn</label><input id="f-emergency-last" value="${v(d.emergency_last_name)}" ${disabled}></div>
+          <div class="form-group"><label>Förnamn</label><input id="f-emergency-first" value="${v(d.emergency_first_name)}" ${personalDisabled}></div>
+          <div class="form-group"><label>Efternamn</label><input id="f-emergency-last" value="${v(d.emergency_last_name)}" ${personalDisabled}></div>
         </div>
-        <div class="form-group"><label>Adress</label><input id="f-emergency-address" value="${v(d.emergency_address)}" ${disabled}></div>
+        <div class="form-group"><label>Adress</label><input id="f-emergency-address" value="${v(d.emergency_address)}" ${personalDisabled}></div>
         <div class="form-row">
-          <div class="form-group"><label>Postnummer</label><input id="f-emergency-postal" value="${v(d.emergency_postal)}" ${disabled}></div>
-          <div class="form-group"><label>Ort</label><input id="f-emergency-city" value="${v(d.emergency_city)}" ${disabled}></div>
+          <div class="form-group"><label>Postnummer</label><input id="f-emergency-postal" value="${v(d.emergency_postal)}" ${personalDisabled}></div>
+          <div class="form-group"><label>Ort</label><input id="f-emergency-city" value="${v(d.emergency_city)}" ${personalDisabled}></div>
         </div>
-        <div class="form-group"><label>Telefon</label><input id="f-emergency-phone" value="${v(d.emergency_phone)}" ${disabled}></div>
-        <div class="form-group"><label>Relation</label><input id="f-emergency-relation" value="${v(d.emergency_relation)}" ${disabled}></div>
+        <div class="form-group"><label>Telefon</label><input id="f-emergency-phone" value="${v(d.emergency_phone)}" ${personalDisabled}></div>
+        <div class="form-group"><label>Relation</label><input id="f-emergency-relation" value="${v(d.emergency_relation)}" ${personalDisabled}></div>
         
         <div class="form-section">Övrigt</div>
         <div class="form-group"><label>Kategori</label>
-          <select id="f-category" ${disabled}>
-            ${Object.entries(userCategories).map(([k, v]) => `<option value="${k}" ${d.category === k ? 'selected' : ''}>${v}</option>`).join('')}
+          <select id="f-category" ${catDisabled}>
+            ${allowedCats.map(([k, v]) => `<option value="${k}" ${targetCat === k ? 'selected' : ''}>${v}</option>`).join('')}
+            ${!allowedCats.find(([k]) => k === targetCat) ? `<option value="${targetCat}" selected>${userCategories[targetCat] || targetCat}</option>` : ''}
           </select>
         </div>
-        <div class="form-group"><label>Anteckningar</label><textarea id="f-notes" ${disabled}>${owner ? (d.notes || '') : maskValue(d.notes)}</textarea></div>
+        <div class="form-group"><label>Anteckningar</label><textarea id="f-notes" ${personalDisabled}>${owner ? (d.notes || '') : maskValue(d.notes)}</textarea></div>
         
         <div class="info-box">
           <h4>Rättigheter</h4>
@@ -457,12 +486,13 @@
             <li><b>Avslutad:</b> Kan ej logga in. Data används för statistik.</li>
             <li><b>Semester:</b> Kan logga in, se data. Inga notiser.</li>
             <li><b>Standard:</b> All data, statistik, kommunikation, notiser.</li>
-            <li><b>Admin:</b> Aktivera/avaktivera, skicka notiser. Ser ej personlig data.</li>
+            <li><b>Admin:</b> Aktivera/avaktivera, ändra kategori på lägre. Ser ej personlig data.</li>
             <li><b>Ägare:</b> Allt + redigera personlig information.</li>
+            <li><b>Superadmin:</b> Kan ändra alla kategorier. Ser ej personlig data.</li>
           </ul>
         </div>
         
-        ${owner ? `<button onclick="saveDriver()" style="width:100%; margin-top:16px;">Spara</button>` : ''}
+        ${owner || canEdit ? `<button onclick="saveDriver()" style="width:100%; margin-top:16px;">Spara</button>` : ''}
         <div style="margin-top:16px; display:flex; gap:8px;">
           <button onclick="activateDriver('${editingDriver}')" style="flex:1;">Aktivera</button>
           <button onclick="deactivateDriver('${editingDriver}')" style="flex:1;">Avaktivera</button>
@@ -476,26 +506,33 @@
     }
 
     async function saveDriver() {
-      if (!isOwner()) return;
-      const driverData = {
-        id: editingDriver,
-        first_name: document.getElementById('f-first-name').value,
-        last_name: document.getElementById('f-last-name').value,
-        address: document.getElementById('f-address').value,
-        postal_code: document.getElementById('f-postal').value,
-        city: document.getElementById('f-city').value,
-        email: document.getElementById('f-email').value,
-        phone: document.getElementById('f-phone').value,
-        emergency_first_name: document.getElementById('f-emergency-first').value,
-        emergency_last_name: document.getElementById('f-emergency-last').value,
-        emergency_address: document.getElementById('f-emergency-address').value,
-        emergency_postal: document.getElementById('f-emergency-postal').value,
-        emergency_city: document.getElementById('f-emergency-city').value,
-        emergency_phone: document.getElementById('f-emergency-phone').value,
-        emergency_relation: document.getElementById('f-emergency-relation').value,
-        category: document.getElementById('f-category').value,
-        notes: document.getElementById('f-notes').value
-      };
+      const d = drivers[editingDriver] || {};
+      const owner = isOwner();
+      const canEdit = canEditCategory(d.category || 'standard');
+      if (!owner && !canEdit) return;
+
+      const driverData = { id: editingDriver };
+      if (owner) {
+        driverData.first_name = document.getElementById('f-first-name').value;
+        driverData.last_name = document.getElementById('f-last-name').value;
+        driverData.address = document.getElementById('f-address').value;
+        driverData.postal_code = document.getElementById('f-postal').value;
+        driverData.city = document.getElementById('f-city').value;
+        driverData.email = document.getElementById('f-email').value;
+        driverData.phone = document.getElementById('f-phone').value;
+        driverData.emergency_first_name = document.getElementById('f-emergency-first').value;
+        driverData.emergency_last_name = document.getElementById('f-emergency-last').value;
+        driverData.emergency_address = document.getElementById('f-emergency-address').value;
+        driverData.emergency_postal = document.getElementById('f-emergency-postal').value;
+        driverData.emergency_city = document.getElementById('f-emergency-city').value;
+        driverData.emergency_phone = document.getElementById('f-emergency-phone').value;
+        driverData.emergency_relation = document.getElementById('f-emergency-relation').value;
+        driverData.notes = document.getElementById('f-notes').value;
+      }
+      if (canEdit) {
+        driverData.category = document.getElementById('f-category').value;
+      }
+
       try {
         await supabaseFetch('drivers', {
           method: 'POST',
