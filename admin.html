@@ -100,7 +100,8 @@
     const menu = [
       { id: 'akeridata', icon: '📊', label: 'Åkeridata' },
       { id: 'chaufforer', icon: '👥', label: 'Chaufförer' },
-      { id: 'statistik', icon: '📈', label: 'Statistik' }
+      { id: 'statistik', icon: '📈', label: 'Statistik' },
+      { id: 'forarapp', icon: '🚗', label: 'Förarapp' }
     ];
 
     const catLabels = { inkort: 'Inkört', timmar: 'Timmar', km: 'Km', chauffor: 'Chaufför', bil: 'Bil' };
@@ -121,7 +122,7 @@
     let tempEnd = null;
     let calMonth = new Date();
     let editingDriver = localStorage.getItem('admin_editing') || null;
-    let currentUserId = localStorage.getItem('driverId') || '';
+    let currentUserId = localStorage.getItem('taxi_driver') || '';
 
     function isOwner() {
       const me = drivers[currentUserId];
@@ -315,7 +316,7 @@
       if (path.length === 0) {
         title.textContent = 'Admin';
         content.innerHTML = `<div class="grid">${menu.map(m => `
-          <div class="icon" onclick="openMenu('${m.id}')">
+          <div class="icon" onclick="${m.id === 'forarapp' ? "location.href='index.html'" : "openMenu('" + m.id + "')"}">
             <div class="emoji">${m.icon}</div>
             <div class="label">${m.label}</div>
           </div>
