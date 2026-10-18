@@ -143,6 +143,22 @@ function getRemainingDays(date) {
   return Math.max(0, diff);
 }
 
+function getRemainingShifts(date, tab) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  if (tab === 'vecka') {
+    const weekEnd = getWeekEnd(date);
+    if (today > weekEnd) return 0;
+    const dayOfWeek = today.getDay();
+    const daysLeft = dayOfWeek === 0 ? 1 : 7 - dayOfWeek + 1;
+    return daysLeft;
+  }
+  if (tab === 'manad') {
+    return getRemainingDays(date);
+  }
+  return 0;
+}
+
 function getShiftsInRange(start, end) {
   return (data.shifts || []).filter(s => {
     const forar = s.forar || '710022';
@@ -272,8 +288,8 @@ function render() {
   const diff = inkort - goal;
   const inkortPerSkift = antalSkift ? Math.round(inkort / antalSkift) : 0;
   const remaining = Math.max(0, goal - inkort);
-  const remainingDays = currentTab === 'manad' ? getRemainingDays(currentDate) : 0;
-  const behovPerSkift = remainingDays > 0 ? Math.round(remaining / remainingDays) : 0;
+  const remainingShifts = getRemainingShifts(currentDate, currentTab);
+  const behovPerSkift = remainingShifts > 0 ? Math.round(remaining / remainingShifts) : 0;
   const diffColor = diff >= 0 ? '#38a169' : '#e53e3e';
 
   let timmarSubs = '';
@@ -295,7 +311,7 @@ function render() {
   if (currentTab !== 'dag') {
     diffSubs = `
       <div class="sub"><span>Inkört/skift</span><span>${formatSEK(inkortPerSkift)}</span></div>
-      <div class="sub"><span>Behov/dag</span><span>${formatSEK(behovPerSkift)}</span></div>`;
+      <div class="sub"><span>Behov/skift</span><span>${formatSEK(behovPerSkift)}</span></div>`;
   }
 
   let paymentSubs = `
