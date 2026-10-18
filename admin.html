@@ -23,7 +23,8 @@
     .controls { padding: 8px 16px; background: #f7fafc; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px; align-items: center; }
     .controls select { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e0; }
     .controls button { padding: 8px 12px; }
-    .section { background: white; border-radius: 12px; margin: 16px; padding: 16px; }
+    .section { background: white; border-radius: 12px; margin: 16px; }
+    .section-header { font-size: 12px; font-weight: 600; color: #718096; padding: 8px 16px; background: #f7fafc; }
     .row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #edf2f7; cursor: pointer; }
     .row:hover { background: #f7fafc; }
     .row:last-child { border-bottom: none; }
@@ -97,14 +98,15 @@
     ];
 
     const catLabels = { inkort: 'Inkört', timmar: 'Timmar', km: 'Km', chauffor: 'Chaufför', bil: 'Bil' };
-    const userCategories = { agare: 'Ägare', admin: 'Admin', normal: 'Normal', semester: 'Semester', avslutad: 'Avslutad' };
+    const userCategories = { agare: 'Ägare', admin: 'Admin', standard: 'Standard', semester: 'Semester', avslutad: 'Avslutad' };
+    const catOrder = ['agare', 'admin', 'standard', 'semester', 'avslutad'];
     const days = ['sö', 'må', 'ti', 'on', 'to', 'fr', 'lö'];
     const months = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
 
     let data = {};
     let drivers = {};
-    let path = [];
-    let category = 'inkort';
+    let path = JSON.parse(localStorage.getItem('admin_path') || '[]');
+    let category = localStorage.getItem('admin_category') || 'inkort';
     let periodStart = new Date();
     let periodEnd = new Date();
     periodStart.setDate(periodStart.getDate() - 1);
@@ -112,7 +114,7 @@
     let tempStart = null;
     let tempEnd = null;
     let calMonth = new Date();
-    let editingDriver = null;
+    let editingDriver = localStorage.getItem('admin_editing') || null;
 
     async function supabaseFetch(path, options = {}) {
       const headers = {
@@ -143,6 +145,12 @@
       render();
     }
 
+    function saveState() {
+      localStorage.setItem('admin_path', JSON.stringify(path));
+      localStorage.setItem('admin_category', category);
+      localStorage.setItem('admin_editing', editingDriver || '');
+    }
+
     function formatSEK(n) {
       return new Intl.NumberFormat('sv-SE').format(Math.round(n || 0)) + ' kr';
     }
@@ -153,6 +161,14 @@
 
     function formatDate(d) {
       return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+    }
+
+    function getDisplayName(id) {
+      const name = drivers[id]?.name || '';
+      if (!name) return id;
+      const parts = name.split(' ');
+      if (parts.length === 1) return parts[0];
+      return parts[0] + ' ' + parts[parts.length - 1][0];
     }
 
     function inPeriod(dateStr) {
@@ -172,7 +188,7 @@
       (data.shifts || []).forEach(s => { if (s.forar) ids.add(s.forar); });
       (data.trips || []).forEach(t => { if (t.forar) ids.add(t.forar); });
       Object.keys(drivers).forEach(id => ids.add(id));
-      return Array.from(ids).sort();
+      return Array.from(ids);
     }
 
     function getDriverStatus(id) {
@@ -266,10 +282,12 @@
 
     function changeCategory() {
       category = document.getElementById('category').value;
+      saveState();
       render();
     }
 
     function render() {
+      saveState();
       renderBreadcrumb();
       const content = document.getElementById('content');
       const title = document.getElementById('title');
@@ -287,7 +305,7 @@
         renderAkeridata(content);
       } else if (path[0].id === 'chaufforer') {
         if (editingDriver) {
-          title.textContent = 'Redigera ' + editingDriver;
+          title.textContent = 'Redigera';
           renderEditDriver(content);
         } else {
           title.textContent = 'Chaufförer';
@@ -326,16 +344,26 @@
 
     function renderChaufforer(content) {
       const ids = getAllDriverIds();
-      let html = '<div class="section">';
+      const grouped = {};
       ids.forEach(id => {
-        const status = getDriverStatus(id);
-        const statusLabel = status === 'active' ? 'Aktiv' : 'Inaktiv';
-        const name = drivers[id]?.name || '';
-        const cat = drivers[id]?.category || 'normal';
-        html += `<div class="row" onclick="editDriver('${id}')">
-          <span class="label">${id}${name ? ' – ' + name : ''}</span>
-          <span class="status status-${status}">${statusLabel}</span>
-        </div>`;
+        const cat = drivers[id]?.category || 'standard';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(id);
+      });
+
+      let html = '<div class="section">';
+      catOrder.forEach(cat => {
+        if (!grouped[cat] || grouped[cat].length === 0) return;
+        html += `<div class="section-header">${userCategories[cat]}</div>`;
+        grouped[cat].sort().forEach(id => {
+          const status = getDriverStatus(id);
+          const statusLabel = status === 'active' ? 'Aktiv' : 'Inaktiv';
+          const displayName = getDisplayName(id);
+          html += `<div class="row" onclick="editDriver('${id}')">
+            <span class="label">${displayName}</span>
+            <span class="status status-${status}">${statusLabel}</span>
+          </div>`;
+        });
       });
       html += '</div>';
       content.innerHTML = html;
@@ -343,7 +371,7 @@
 
     function renderEditDriver(content) {
       const d = drivers[editingDriver] || {};
-      content.innerHTML = `<div class="section">
+      content.innerHTML = `<div class="section" style="padding:16px;">
         <div class="form-group"><label>Namn</label><input id="f-name" value="${d.name || ''}"></div>
         <div class="form-group"><label>Adress</label><input id="f-address" value="${d.address || ''}"></div>
         <div class="form-group"><label>E-post</label><input id="f-email" type="email" value="${d.email || ''}"></div>
