@@ -35,6 +35,8 @@
     .driver-detail { padding-left: 64px; background: #e2e8f0; font-size: 13px; }
     .driver-detail .label { font-weight: 400; }
     .trip-row { padding-left: 64px; background: #f7fafc; font-size: 12px; }
+    .detail-row { padding-left: 80px; background: #edf2f7; font-size: 12px; }
+    .trip-detail { padding-left: 80px; background: #e2e8f0; font-size: 11px; }
     .row .label { flex: 1; font-weight: 500; }
     .row .value { font-weight: 600; }
     .row.total { background: #f7fafc; font-weight: 600; }
@@ -144,6 +146,8 @@
     let expandedDays = {};
     let expandedCars = {};
     let expandedDrivers = {};
+    let expandedCategories = {};
+    let expandedTrips = {};
 
     function getMyCategory() {
       const me = drivers[currentUserId];
@@ -423,6 +427,16 @@
       render();
     }
 
+    function toggleCategory(key) {
+      expandedCategories[key] = !expandedCategories[key];
+      render();
+    }
+
+    function toggleTrip(key) {
+      expandedTrips[key] = !expandedTrips[key];
+      render();
+    }
+
     function render() {
       saveState();
       renderBreadcrumb();
@@ -512,12 +526,59 @@
                   const tripCount = driverTrips.length;
                   const krPerTrip = tripCount > 0 ? driverAmount / tripCount : 0;
                   
-                  html += `<div class="row driver-detail"><span class="label">Körningar</span><span class="value">${tripCount} st</span></div>`;
-                  html += `<div class="row driver-detail"><span class="label">Kr/körning</span><span class="value">${formatSEK(krPerTrip)}</span></div>`;
-                  
-                  driverTrips.sort((a, b) => (a.kvittonr || '').localeCompare(b.kvittonr || '')).forEach(t => {
-                    html += `<div class="row trip-row"><span class="label">${t.kvittonr || '-'}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>`;
+                  // Find shift for this driver/car/day
+                  const shift = (data.shifts || []).find(s => {
+                    const shiftDate = (s.start || '').slice(0, 4) + '-' + (s.start || '').slice(4, 6) + '-' + (s.start || '').slice(6, 8);
+                    return s.forar === driver && s.taxi === car && shiftDate === date;
                   });
+                  
+                  const hours = shift ? parseFloat((shift.tid || '0').replace(':', '.')) : 0;
+                  const km = driverTrips.reduce((sum, t) => sum + parseFloat((t.kilometer || '0').replace(',', '.')), 0);
+                  const krPerHour = hours > 0 ? driverAmount / hours : 0;
+                  const krPerMil = km > 0 ? driverAmount / (km / 10) : 0;
+                  
+                  // Arbetade timmar
+                  const hoursKey = driverKey + '_hours';
+                  const hoursExpanded = expandedCategories[hoursKey];
+                  html += `<div class="row detail-row expandable" onclick="event.stopPropagation();toggleCategory('${hoursKey}')"><span class="expand-icon">${hoursExpanded ? '−' : '+'}</span><span class="label">Arbetade timmar</span><span class="value">${hours.toFixed(1)} tim</span></div>`;
+                  if (hoursExpanded && shift) {
+                    html += `<div class="row trip-detail"><span class="label">Start</span><span class="value">${(shift.start || '').slice(9)}</span></div>`;
+                    html += `<div class="row trip-detail"><span class="label">Slut</span><span class="value">${(shift.slut || '').slice(9)}</span></div>`;
+                    html += `<div class="row trip-detail"><span class="label">Kr/timme</span><span class="value">${formatSEK(krPerHour)}</span></div>`;
+                  }
+                  
+                  // Körda km
+                  const kmKey = driverKey + '_km';
+                  const kmExpanded = expandedCategories[kmKey];
+                  html += `<div class="row detail-row expandable" onclick="event.stopPropagation();toggleCategory('${kmKey}')"><span class="expand-icon">${kmExpanded ? '−' : '+'}</span><span class="label">Körda km</span><span class="value">${km.toFixed(1)} km</span></div>`;
+                  if (kmExpanded) {
+                    html += `<div class="row trip-detail"><span class="label">Kr/mil</span><span class="value">${formatSEK(krPerMil)}</span></div>`;
+                  }
+                  
+                  // Antal körningar
+                  const tripsKey = driverKey + '_trips';
+                  const tripsExpanded = expandedCategories[tripsKey];
+                  html += `<div class="row detail-row expandable" onclick="event.stopPropagation();toggleCategory('${tripsKey}')"><span class="expand-icon">${tripsExpanded ? '−' : '+'}</span><span class="label">Antal körningar</span><span class="value">${tripCount} st</span></div>`;
+                  if (tripsExpanded) {
+                    html += `<div class="row trip-detail"><span class="label">Kr/körning</span><span class="value">${formatSEK(krPerTrip)}</span></div>`;
+                  }
+                  
+                  // Kvitton
+                  const kvittonKey = driverKey + '_kvitton';
+                  const kvittonExpanded = expandedCategories[kvittonKey];
+                  html += `<div class="row detail-row expandable" onclick="event.stopPropagation();toggleCategory('${kvittonKey}')"><span class="expand-icon">${kvittonExpanded ? '−' : '+'}</span><span class="label">Kvitton</span><span class="value">${tripCount} st</span></div>`;
+                  if (kvittonExpanded) {
+                    driverTrips.sort((a, b) => (a.kvittonr || '').localeCompare(b.kvittonr || '')).forEach(t => {
+                      const tripKey = driverKey + '_' + t.kvittonr;
+                      const tripExpanded = expandedTrips[tripKey];
+                      html += `<div class="row trip-row expandable" onclick="event.stopPropagation();toggleTrip('${tripKey}')"><span class="expand-icon">${tripExpanded ? '−' : '+'}</span><span class="label">${t.kvittonr || '-'}</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>`;
+                      if (tripExpanded) {
+                        html += `<div class="row trip-detail"><span class="label">Start</span><span class="value">${t.starttid || '-'} ${t.startzon || ''}</span></div>`;
+                        html += `<div class="row trip-detail"><span class="label">Slut</span><span class="value">${t.sluttid || '-'} ${t.slutzon || ''}</span></div>`;
+                        html += `<div class="row trip-detail"><span class="label">Betalt</span><span class="value">${formatSEK(parseAmount(t.belopp))}</span></div>`;
+                      }
+                    });
+                  }
                 }
               });
             }
