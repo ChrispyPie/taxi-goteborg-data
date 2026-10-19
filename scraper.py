@@ -48,7 +48,6 @@ def scrape_day(page, forar_id, date_str):
     page.wait_for_timeout(1500)
 
     receipts = []
-    # Hitta rätt tabell (den med Kvittonr i header)
     tables = page.query_selector_all("table")
     for table in tables:
         header = table.query_selector("tr")
@@ -129,10 +128,11 @@ def scrape_driver(page, forar_id, existing, start_date, end_date):
         date_str = current.strftime("%Y-%m-%d")
         receipts = scrape_day(page, forar_id, date_str)
         for kvitto in receipts:
-            if kvitto in existing:
+            key = (kvitto, forar_id)
+            if key in existing:
                 continue
             detail = scrape_trip_detail(page, kvitto)
-            existing[kvitto] = {"kvittonr": kvitto, "forar": forar_id, **detail}
+            existing[key] = {"kvittonr": kvitto, "forar": forar_id, **detail}
             new_count += 1
             print(f"    Ny: {kvitto}")
         current += timedelta(days=1)
@@ -149,7 +149,7 @@ def main():
     except:
         data = {"trips": [], "shifts": []}
 
-    existing = {t.get("kvittonr"): t for t in data.get("trips", [])}
+    existing = {(t.get("kvittonr"), t.get("forar")): t for t in data.get("trips", [])}
 
     seen = set()
     all_shifts = []
@@ -161,7 +161,6 @@ def main():
             s["forar"] = forar
             all_shifts.append(s)
 
-    # Datum från env eller default igår+idag
     today = datetime.now()
     from_env = os.environ.get("SCRAPE_FROM", "")
     to_env = os.environ.get("SCRAPE_TO", "")
