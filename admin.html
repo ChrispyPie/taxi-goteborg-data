@@ -803,7 +803,12 @@
           headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
         });
         drivers[id] = { ...drivers[id], id, password: pw, expiry, activated: true };
-        alert('Aktiverad!\nLösenord: ' + pw);
+        const link = 'https://chrispypie.github.io/taxi-goteborg-data/';
+        const msg = 'TaxiData\n\nLänk: ' + link + '\nFörar-ID: ' + id + '\nLösenord: ' + pw + '\n\nLogga in inom 24 timmar.';
+        if (navigator.share) {
+          navigator.share({ title: 'TaxiData', text: msg }).catch(() => {});
+        }
+        alert('Aktiverad!\n\nLösenord: ' + pw + '\n\nLänk: ' + link);
         render();
       } catch (e) {
         alert('Fel: ' + e.message);
