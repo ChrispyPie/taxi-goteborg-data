@@ -229,6 +229,7 @@ function formatShiftDate(str) {
 }
 
 function render() {
+  try {
   const isTodayNow = isToday(currentDate);
   const isCurrent = isCurrentPeriod();
   const dateEl = document.getElementById('current-date');
@@ -456,3 +457,8 @@ document.getElementById('next').onclick = () => {
   render();
 };
 document.getElementById('today').onclick = () => { currentDate = new Date(); render(); };
+
+  } catch (e) {
+    document.getElementById('content').innerHTML = 'Render-fel: ' + e.message;
+  }
+}
