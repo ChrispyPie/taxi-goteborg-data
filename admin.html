@@ -244,10 +244,12 @@
 
     async function loadData() {
       const monthsToLoad = getMonthsInPeriod();
-      console.log('Loading months:', monthsToLoad);
+      const debug = document.getElementById('debug');
+      debug.innerHTML = 'Laddar: ' + monthsToLoad.join(', ');
       await Promise.all(monthsToLoad.map(loadMonth));
       mergeLoadedData();
-      console.log('Loaded shifts:', data.shifts?.length, 'drivers:', getAllDriverIds().length);
+      const ids = getAllDriverIds();
+      debug.innerHTML = 'Skift: ' + (data.shifts?.length || 0) + ', Förare: ' + ids.length + '<br>' + ids.sort().join(', ');
 
       try {
         const rows = await supabaseFetch('drivers?select=*');
