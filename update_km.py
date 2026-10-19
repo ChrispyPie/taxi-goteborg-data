@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Engångsscript: Uppdatera km för befintliga skift.
-Söker varje skift via passnr och hämtar km.
+Engångsscript: Uppdatera km + start/slut för befintliga skift.
+Söker varje skift via passnr och hämtar data.
 """
 
 import os
@@ -23,8 +23,8 @@ def login(page):
     page.wait_for_load_state("networkidle")
     return "Login.aspx" not in page.url
 
-def get_km_for_shift(page, passnr, forar):
-    """Sök specifikt skift och hämta km."""
+def get_shift_data(page, passnr, forar):
+    """Sök specifikt skift och hämta km + start/slut."""
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
     page.evaluate(f"""
@@ -38,7 +38,7 @@ def get_km_for_shift(page, passnr, forar):
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
 
-    # Hitta raden med rätt passnr och klicka förstoringsglas
+    # Hitta raden och hämta start/slut, sedan klicka förstoringsglas
     result = page.evaluate(f"""
         () => {{
             const tables = document.querySelectorAll('table');
@@ -47,12 +47,14 @@ def get_km_for_shift(page, passnr, forar):
                 for (let i = 1; i < rows.length; i++) {{
                     const cells = rows[i].querySelectorAll('td');
                     if (cells.length > 8 && cells[8].innerText.trim() === '{passnr}') {{
+                        const start = cells[1].innerText.trim();
+                        const slut = cells[2].innerText.trim();
                         const btn = rows[i].querySelector('input[type="image"]');
-                        if (btn) {{ btn.click(); return true; }}
+                        if (btn) {{ btn.click(); return {{ start, slut }}; }}
                     }}
                 }}
             }}
-            return false;
+            return null;
         }}
     """)
     if not result:
@@ -62,9 +64,13 @@ def get_km_for_shift(page, passnr, forar):
     page.wait_for_timeout(500)
     text = page.inner_text("body")
     match = re.search(r'Totalt antal km i pass:\s*([\d,]+)', text)
-    if match:
-        return match.group(1).replace(',', '.')
-    return None
+    km = match.group(1).replace(',', '.') if match else None
+
+    return {
+        "start": result.get("start"),
+        "slut": result.get("slut"),
+        "km": km
+    }
 
 def main():
     if not PASSWORD:
@@ -97,11 +103,16 @@ def main():
             forar = s.get("forar")
             if not passnr or not forar:
                 continue
-            km = get_km_for_shift(page, passnr, forar)
-            if km:
-                s["km"] = km
+            result = get_shift_data(page, passnr, forar)
+            if result:
+                if result.get("km"):
+                    s["km"] = result["km"]
+                if result.get("start"):
+                    s["start"] = result["start"]
+                if result.get("slut"):
+                    s["slut"] = result["slut"]
                 updated += 1
-                print(f"  {passnr}: {km} km")
+                print(f"  {passnr}: {result.get('km')} km, {result.get('start')} - {result.get('slut')}")
             else:
                 print(f"  {passnr}: misslyckades")
 
