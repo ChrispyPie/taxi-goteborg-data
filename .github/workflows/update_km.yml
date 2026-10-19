@@ -2,6 +2,15 @@ name: Update shift km
 
 on:
   workflow_dispatch:
+    inputs:
+      from_day:
+        description: 'Från dag (1-31)'
+        required: true
+        default: '1'
+      to_day:
+        description: 'Till dag (1-31)'
+        required: true
+        default: '18'
 
 permissions:
   contents: write
@@ -22,6 +31,8 @@ jobs:
         env:
           STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
           STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+          FROM_DAY: ${{ inputs.from_day }}
+          TO_DAY: ${{ inputs.to_day }}
         run: python update_km.py
       - name: Commit
         run: |
