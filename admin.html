@@ -589,6 +589,18 @@
           });
         }
       });
+      if (unknown.length > 0) {
+        html += `<div class="section-header">Övriga</div>`;
+        unknown.sort().forEach(id => {
+          const status = getDriverStatus(id);
+          const statusLabel = status === 'active' ? 'Aktiv' : 'Inaktiv';
+          const displayName = getDisplayName(id);
+          html += `<div class="row" onclick="editDriver('${id}')">
+            <span class="label">${displayName}</span>
+            <span class="status status-${status}">${statusLabel}</span>
+          </div>`;
+        });
+      }
       html += '</div>';
       content.innerHTML = html;
     }
@@ -649,10 +661,15 @@
     function renderChaufforer(content) {
       const ids = getAllDriverIds();
       const grouped = {};
+      const unknown = [];
       ids.forEach(id => {
         const cat = drivers[id]?.category || 'standard';
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(id);
+        if (!catOrder.includes(cat)) {
+          unknown.push(id);
+        } else {
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(id);
+        }
       });
 
       let html = '<div class="section">';
@@ -669,6 +686,18 @@
           </div>`;
         });
       });
+      if (unknown.length > 0) {
+        html += `<div class="section-header">Övriga</div>`;
+        unknown.sort().forEach(id => {
+          const status = getDriverStatus(id);
+          const statusLabel = status === 'active' ? 'Aktiv' : 'Inaktiv';
+          const displayName = getDisplayName(id);
+          html += `<div class="row" onclick="editDriver('${id}')">
+            <span class="label">${displayName}</span>
+            <span class="status status-${status}">${statusLabel}</span>
+          </div>`;
+        });
+      }
       html += '</div>';
       content.innerHTML = html;
     }
