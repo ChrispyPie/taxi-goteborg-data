@@ -138,7 +138,8 @@
     let data = { trips: [], shifts: [] };
     let loadedMonths = {};
     let drivers = {};
-    let path = JSON.parse(localStorage.getItem('admin_path') || '[]');
+    let path = [];
+    localStorage.removeItem('admin_path');
     let category = localStorage.getItem('admin_category') || 'inkort';
     let periodStart = new Date();
     periodStart.setDate(periodStart.getDate() - 1);
