@@ -208,7 +208,7 @@
     async function loadMonth(ym) {
       if (loadedMonths[ym]) return;
       try {
-        const res = await fetch('data-' + ym + '.json?t=' + Date.now());
+        const res = await fetch('data-' + ym + '.json?v=' + Date.now() + '&r=' + Math.random());
         if (res.ok) {
           const monthData = await res.json();
           loadedMonths[ym] = monthData;
