@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 Engångsscript: Uppdatera km + start/slut för befintliga skift.
-Söker varje skift via passnr och hämtar data.
 """
 
 import os
@@ -23,21 +22,29 @@ def login(page):
     page.wait_for_load_state("networkidle")
     return "Login.aspx" not in page.url
 
-def get_shift_data(page, passnr, forar):
-    """Sök specifikt skift och hämta km + start/slut."""
+def get_shift_data(page, passnr, forar, start_date):
+    """Sök specifikt skift och hämta km."""
+    # Extrahera datum från start (format: 20261001 17:28)
+    date_str = ""
+    if start_date and len(start_date) >= 8:
+        d = start_date.replace('\xa0', ' ').split()[0]
+        if len(d) == 8:
+            date_str = f"{d[:4]}-{d[4:6]}-{d[6:8]}"
+
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
     page.evaluate(f"""
         () => {{
             document.getElementById('MainContent_tbxForarId').value = '{forar}';
-            document.getElementById('MainContent_tbxFromDat').value = '';
-            document.getElementById('MainContent_tbxTomDat').value = '';
+            document.getElementById('MainContent_tbxFromDat').value = '{date_str}';
+            document.getElementById('MainContent_tbxTomDat').value = '{date_str}';
         }}
     """)
     page.click("input[value='Sök']")
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
 
+    # Hitta raden med rätt passnr
     result = page.evaluate(f"""
         () => {{
             const tables = document.querySelectorAll('table');
@@ -45,9 +52,10 @@ def get_shift_data(page, passnr, forar):
                 const rows = table.querySelectorAll('tr');
                 for (let i = 1; i < rows.length; i++) {{
                     const cells = rows[i].querySelectorAll('td');
-                    if (cells.length > 8 && cells[8].innerText.trim() === '{passnr}') {{
-                        const start = cells[1].innerText.trim();
-                        const slut = cells[2].innerText.trim();
+                    const cellText = cells[8] ? cells[8].innerText.trim() : '';
+                    if (cellText === '{passnr}' || cellText.includes('{passnr}')) {{
+                        const start = cells[1] ? cells[1].innerText.trim() : '';
+                        const slut = cells[2] ? cells[2].innerText.trim() : '';
                         const btn = rows[i].querySelector('input[type="image"]');
                         if (btn) {{ btn.click(); return {{ start, slut }}; }}
                     }}
@@ -65,11 +73,7 @@ def get_shift_data(page, passnr, forar):
     match = re.search(r'Totalt antal km i pass:\s*([\d,]+)', text)
     km = match.group(1).replace(',', '.') if match else None
 
-    return {
-        "start": result.get("start"),
-        "slut": result.get("slut"),
-        "km": km
-    }
+    return {"start": result.get("start"), "slut": result.get("slut"), "km": km}
 
 def main():
     if not PASSWORD:
@@ -95,14 +99,12 @@ def main():
         for s in shifts:
             passnr = s.get("passnr")
             forar = s.get("forar")
+            start = s.get("start", "")
             if not passnr or not forar:
                 continue
-            result = get_shift_data(page, passnr, forar)
-            if result:
-                # Alltid uppdatera km
-                if result.get("km"):
-                    s["km"] = result["km"]
-                # Bara uppdatera start/slut om de saknas
+            result = get_shift_data(page, passnr, forar, start)
+            if result and result.get("km"):
+                s["km"] = result["km"]
                 if not s.get("start") and result.get("start"):
                     s["start"] = result["start"]
                 if not s.get("slut") and result.get("slut"):
