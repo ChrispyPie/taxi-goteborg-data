@@ -73,15 +73,15 @@
   <script>
     var menu = [
       { id: 'kordata', icon: '🚗', label: 'Körpassdata', roles: ['standard', 'admin', 'agare', 'superadmin'] },
-      { id: 'admin', icon: '🔧', label: 'Admin', roles: ['admin', 'agare', 'superadmin'], submenu: [
-        { id: 'akeridata', icon: '📊', label: 'Åkeridata' },
-        { id: 'chaufforer', icon: '👥', label: 'Chaufförer' }
-      ]},
       { id: 'statistik', icon: '📈', label: 'Statistik', roles: ['standard', 'admin', 'agare', 'superadmin'] },
       { id: 'toplistor', icon: '🏆', label: 'Toplistor', roles: ['standard', 'admin', 'agare', 'superadmin'] },
       { id: 'kommunikation', icon: '💬', label: 'Kommunikation', roles: ['standard', 'admin', 'agare', 'superadmin'] },
       { id: 'kalender', icon: '📅', label: 'Kalender', roles: ['standard', 'admin', 'agare', 'superadmin'] },
-      { id: 'installningar', icon: '⚙️', label: 'Inställningar', roles: ['standard', 'admin', 'agare', 'superadmin'] }
+      { id: 'installningar', icon: '⚙️', label: 'Inställningar', roles: ['standard', 'admin', 'agare', 'superadmin'] },
+      { id: 'admin', icon: '🔐', label: 'Admin', roles: ['admin', 'agare', 'superadmin'], submenu: [
+        { id: 'akeridata', icon: '📊', label: 'Åkeridata' },
+        { id: 'chaufforer', icon: '👥', label: 'Chaufförer' }
+      ]}
     ];
 
     var current = null;
