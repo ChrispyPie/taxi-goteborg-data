@@ -79,11 +79,14 @@
 
   <div id="admin-app">
     <header>
-      <div style="position:absolute; top:4px; right:50px; font-size:10px; color:#999;">v1.0.3</div>
-      <button id="back" class="hidden" onclick="goBack()">←</button>
+      <button onclick="goHome()" style="font-size:20px;">🏠</button>
       <h1 id="title">Admin</h1>
-      <button onclick="goHome()">🏠</button>
+      <button onclick="toggleProfile()" style="font-size:20px;">👤</button>
     </header>
+    <div class="profile-menu" id="profile-menu" style="display:none; position:absolute; top:60px; right:16px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; z-index:100;">
+      <div onclick="location.href='index.html'" style="padding:8px; cursor:pointer;">Förarapp</div>
+      <div onclick="logout()" style="padding:8px; cursor:pointer; color:#dc2626;">Logga ut</div>
+    </div>
     <div class="breadcrumb" id="breadcrumb"></div>
     <div class="controls hidden" id="controls">
       <select id="category" onchange="changeCategory()">
@@ -897,6 +900,15 @@
       render();
     }
 
+    function toggleProfile() {
+      const menu = document.getElementById('profile-menu');
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+    function logout() {
+      localStorage.removeItem('driver_id');
+      localStorage.removeItem('driver_password');
+      location.href = 'index.html';
+    }
     function goHome() {
       path = [];
       editingDriver = null;

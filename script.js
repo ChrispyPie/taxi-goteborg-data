@@ -33,6 +33,13 @@ async function loadData() {
   }
 }
 
+function goHome() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  currentView = 'day';
+  currentDate = new Date();
+  render();
+}
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
