@@ -10,6 +10,7 @@ Manuell körning med datum:
 
 import os
 import json
+import re
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
@@ -91,6 +92,31 @@ def scrape_trip_detail(page, kvitto):
         print(f"Detalj misslyckades för {kvitto}: {e}")
         return {}
 
+def get_shift_km(page, row_index):
+    try:
+        page.evaluate(f"""
+            () => {{
+                const tables = document.querySelectorAll('table');
+                for (const table of tables) {{
+                    const rows = table.querySelectorAll('tr');
+                    if (rows.length > {row_index + 1}) {{
+                        const row = rows[{row_index + 1}];
+                        const btn = row.querySelector('input[type="image"]');
+                        if (btn) {{ btn.click(); return; }}
+                    }}
+                }}
+            }}
+        """)
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(500)
+        text = page.inner_text("body")
+        match = re.search(r'Totalt antal km i pass:\s*([\d,]+)', text)
+        if match:
+            return match.group(1).replace(',', '.')
+    except:
+        pass
+    return "0"
+
 def fetch_shifts(page, forar_id, from_date, to_date):
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
@@ -106,19 +132,25 @@ def fetch_shifts(page, forar_id, from_date, to_date):
     page.wait_for_timeout(1000)
 
     shifts = []
-    rows = page.query_selector_all("table tr")
-    for row in rows[1:]:
-        cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-        if len(cells) >= 8 and cells[0].startswith('A'):
-            shifts.append({
-                "taxi": cells[0],
-                "start": cells[1],
-                "slut": cells[2],
-                "tid": cells[3],
-                "passnr": cells[8] if len(cells) > 8 else "",
-                "resor": cells[9] if len(cells) > 9 else "",
-                "forar": forar_id
-            })
+    tables = page.query_selector_all("table")
+    for table in tables:
+        rows = table.query_selector_all("tr")
+        for i, row in enumerate(rows[1:]):
+            cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
+            if len(cells) >= 8 and cells[0].startswith('A'):
+                km = get_shift_km(page, i)
+                shifts.append({
+                    "taxi": cells[0],
+                    "start": cells[1],
+                    "slut": cells[2],
+                    "tid": cells[3],
+                    "passnr": cells[8] if len(cells) > 8 else "",
+                    "resor": cells[9] if len(cells) > 9 else "",
+                    "km": km,
+                    "forar": forar_id
+                })
+                page.go_back()
+                page.wait_for_load_state("networkidle")
     return shifts
 
 def scrape_driver(page, forar_id, existing, start_date, end_date):
