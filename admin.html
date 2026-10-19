@@ -244,8 +244,10 @@
 
     async function loadData() {
       const monthsToLoad = getMonthsInPeriod();
+      console.log('Loading months:', monthsToLoad);
       await Promise.all(monthsToLoad.map(loadMonth));
       mergeLoadedData();
+      console.log('Loaded shifts:', data.shifts?.length, 'drivers:', getAllDriverIds().length);
 
       try {
         const rows = await supabaseFetch('drivers?select=*');
