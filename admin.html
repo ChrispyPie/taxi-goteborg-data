@@ -334,11 +334,9 @@
       const controls = document.getElementById('controls');
       if (path.length === 0) {
         bc.innerHTML = '';
-        back.classList.add('hidden');
         controls.classList.add('hidden');
         return;
       }
-      back.classList.remove('hidden');
       controls.classList.toggle('hidden', path[0].id !== 'akeridata');
       let html = '<span onclick="goHome()">Hem</span>';
       path.forEach((p, i) => {
