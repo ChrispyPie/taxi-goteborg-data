@@ -117,7 +117,7 @@ def get_shift_km(page, row_index):
         pass
     return "0"
 
-def fetch_shifts(page, forar_id, from_date, to_date):
+def fetch_shifts(page, forar_id, from_date, to_date, existing_km):
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
     page.evaluate(f"""
@@ -138,19 +138,25 @@ def fetch_shifts(page, forar_id, from_date, to_date):
         for i, row in enumerate(rows[1:]):
             cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
             if len(cells) >= 8 and cells[0].startswith('A'):
-                km = get_shift_km(page, i)
+                passnr = cells[8] if len(cells) > 8 else ""
+                key = (passnr, forar_id)
+                # Hoppa över om vi redan har km
+                if key in existing_km and existing_km[key]:
+                    km = existing_km[key]
+                else:
+                    km = get_shift_km(page, i)
+                    page.go_back()
+                    page.wait_for_load_state("networkidle")
                 shifts.append({
                     "taxi": cells[0],
                     "start": cells[1],
                     "slut": cells[2],
                     "tid": cells[3],
-                    "passnr": cells[8] if len(cells) > 8 else "",
+                    "passnr": passnr,
                     "resor": cells[9] if len(cells) > 9 else "",
                     "km": km,
                     "forar": forar_id
                 })
-                page.go_back()
-                page.wait_for_load_state("networkidle")
     return shifts
 
 def scrape_driver(page, forar_id, existing, start_date, end_date):
@@ -185,6 +191,7 @@ def main():
 
     seen = set()
     all_shifts = []
+    existing_km = {}
     for s in data.get("shifts", []):
         forar = s.get("forar") or "710022"
         key = (s.get("passnr"), forar)
@@ -192,6 +199,8 @@ def main():
             seen.add(key)
             s["forar"] = forar
             all_shifts.append(s)
+            if s.get("km"):
+                existing_km[key] = s.get("km")
 
     today = datetime.now()
     from_env = os.environ.get("SCRAPE_FROM", "")
@@ -211,6 +220,7 @@ def main():
     to_str = end_date.strftime("%Y-%m-%d")
 
     print(f"Scrapar {from_str} till {to_str}")
+    print(f"Skift med km: {len(existing_km)}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -226,7 +236,7 @@ def main():
             print(f"Förare {forar_id}:")
             new_count = scrape_driver(page, forar_id, existing, start_date, end_date)
             total_new += new_count
-            new_shifts = fetch_shifts(page, forar_id, from_str, to_str)
+            new_shifts = fetch_shifts(page, forar_id, from_str, to_str, existing_km)
             added = 0
             for s in new_shifts:
                 key = (s.get("passnr"), forar_id)
@@ -234,6 +244,13 @@ def main():
                     seen.add(key)
                     all_shifts.append(s)
                     added += 1
+                elif s.get("km") and key not in existing_km:
+                    # Uppdatera befintligt skift med km
+                    for existing_s in all_shifts:
+                        if (existing_s.get("passnr"), existing_s.get("forar")) == key:
+                            existing_s["km"] = s.get("km")
+                            existing_km[key] = s.get("km")
+                            break
             print(f"  {new_count} nya kvitton, {added} nya skift")
 
         data["trips"] = list(existing.values())
