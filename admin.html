@@ -528,8 +528,12 @@
                   
                   // Find shift for this driver/car/day
                   const shift = (data.shifts || []).find(s => {
-                    const shiftDate = (s.start || '').slice(0, 4) + '-' + (s.start || '').slice(4, 6) + '-' + (s.start || '').slice(6, 8);
-                    return s.forar === driver && s.taxi === car && shiftDate === date;
+                    if (s.forar !== driver || s.taxi !== car) return false;
+                    const startStr = (s.start || '').replace(/\s/g, ' ');
+                    const slutStr = (s.slut || '').replace(/\s/g, ' ');
+                    const startDate = startStr.slice(0, 4) + '-' + startStr.slice(4, 6) + '-' + startStr.slice(6, 8);
+                    const slutDate = slutStr.slice(0, 4) + '-' + slutStr.slice(4, 6) + '-' + slutStr.slice(6, 8);
+                    return date >= startDate && date <= slutDate;
                   });
                   
                   const hours = shift ? parseFloat((shift.tid || '0').replace(':', '.')) : 0;
