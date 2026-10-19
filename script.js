@@ -265,7 +265,7 @@ function render() {
 
   const trips = allTrips.filter(t => t.kredittyp !== '999');
   const antal = trips.length;
-  const totalKm = trips.reduce((s, t) => s + parseAmount(t.kilometer), 0);
+  const totalKm = shifts.reduce((s, sh) => s + parseFloat((sh.km || '0').replace(',', '.')), 0);
   const arbetad = formatTime(totalMinutes);
   const antalSkift = shifts.length;
 
