@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-19T01:53:58.001430Z",
+  "last_updated": "2026-10-19T05:33:11.433000Z",
   "forar": "710022",
   "shifts": [
     {
@@ -3936,6 +3936,24 @@
       "passnr": "121",
       "resor": "3",
       "forar": "829560"
+    },
+    {
+      "taxi": "A94",
+      "start": "20261018  18:34",
+      "slut": "20261019  06:06",
+      "tid": "11:32",
+      "passnr": "4235",
+      "resor": "5",
+      "forar": "179764"
+    },
+    {
+      "taxi": "A191",
+      "start": "20261018  18:08",
+      "slut": "20261019  05:47",
+      "tid": "11:39",
+      "passnr": "4142",
+      "resor": "4",
+      "forar": "710022"
     }
   ],
   "trips": [
@@ -34480,6 +34498,97 @@
       "starttid": "23:23",
       "sluttid": "23:39",
       "startdatum": "2026-10-17"
+    },
+    {
+      "kvittonr": "000757-01",
+      "forar": "169327",
+      "startzon": "117",
+      "slutzon": "6",
+      "kilometer": "8,38",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "389,00",
+      "starttid": "05:44",
+      "sluttid": "05:56",
+      "startdatum": "2026-10-19"
+    },
+    {
+      "kvittonr": "000758-01",
+      "forar": "169327",
+      "startzon": "99",
+      "slutzon": "19",
+      "kilometer": "4,43",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "316,00",
+      "starttid": "06:48",
+      "sluttid": "07:02",
+      "startdatum": "2026-10-19"
+    },
+    {
+      "kvittonr": "000870-01",
+      "forar": "179629",
+      "startzon": "117",
+      "slutzon": "298",
+      "kilometer": "37,543",
+      "dricks": "0,00",
+      "kredittyp": "164",
+      "belopp": "554,00",
+      "starttid": "05:05",
+      "sluttid": "05:36",
+      "startdatum": "2026-10-19"
+    },
+    {
+      "kvittonr": "032253-01",
+      "forar": "179764",
+      "startzon": "1",
+      "slutzon": "2",
+      "kilometer": "1,197",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "108,00",
+      "starttid": "03:15",
+      "sluttid": "03:19",
+      "startdatum": "2026-10-19"
+    },
+    {
+      "kvittonr": "032254-01",
+      "forar": "179764",
+      "startzon": "5",
+      "slutzon": "298",
+      "kilometer": "24,785",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "562,00",
+      "starttid": "04:05",
+      "sluttid": "04:26",
+      "startdatum": "2026-10-19"
+    },
+    {
+      "kvittonr": "032255-01",
+      "forar": "179764",
+      "startzon": "204",
+      "slutzon": "298",
+      "kilometer": "25,828",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "562,00",
+      "starttid": "05:14",
+      "sluttid": "05:38",
+      "startdatum": "2026-10-19"
+    },
+    {
+      "kvittonr": "030124-01",
+      "forar": "710022",
+      "startzon": "438",
+      "slutzon": "298",
+      "kilometer": "45,347",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "836,00",
+      "starttid": "03:59",
+      "sluttid": "04:34",
+      "startdatum": "2026-10-19"
     }
   ]
 }
