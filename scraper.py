@@ -117,12 +117,13 @@ def get_shift_km(page, row_index):
         pass
     return "0"
 
-def fetch_shifts(page, forar_id, from_date, to_date, existing_km):
+def fetch_all_shifts(page, from_date, to_date, existing_km):
+    """Sök passrapport en gång för alla förare."""
     page.goto(f"{STIG_URL}/Passrapport.aspx")
     page.wait_for_load_state("networkidle")
     page.evaluate(f"""
         () => {{
-            document.getElementById('MainContent_tbxForarId').value = '{forar_id}';
+            document.getElementById('MainContent_tbxForarId').value = '';
             document.getElementById('MainContent_tbxFromDat').value = '{from_date}';
             document.getElementById('MainContent_tbxTomDat').value = '{to_date}';
         }}
@@ -139,8 +140,8 @@ def fetch_shifts(page, forar_id, from_date, to_date, existing_km):
             cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
             if len(cells) >= 8 and cells[0].startswith('A'):
                 passnr = cells[8] if len(cells) > 8 else ""
-                key = (passnr, forar_id)
-                # Hoppa över om vi redan har km
+                forar = cells[7] if len(cells) > 7 else ""
+                key = (passnr, forar)
                 if key in existing_km and existing_km[key]:
                     km = existing_km[key]
                 else:
@@ -155,7 +156,7 @@ def fetch_shifts(page, forar_id, from_date, to_date, existing_km):
                     "passnr": passnr,
                     "resor": cells[9] if len(cells) > 9 else "",
                     "km": km,
-                    "forar": forar_id
+                    "forar": forar
                 })
     return shifts
 
@@ -236,22 +237,24 @@ def main():
             print(f"Förare {forar_id}:")
             new_count = scrape_driver(page, forar_id, existing, start_date, end_date)
             total_new += new_count
-            new_shifts = fetch_shifts(page, forar_id, from_str, to_str, existing_km)
-            added = 0
-            for s in new_shifts:
-                key = (s.get("passnr"), forar_id)
-                if key not in seen:
-                    seen.add(key)
-                    all_shifts.append(s)
-                    added += 1
-                elif s.get("km") and key not in existing_km:
-                    # Uppdatera befintligt skift med km
-                    for existing_s in all_shifts:
-                        if (existing_s.get("passnr"), existing_s.get("forar")) == key:
-                            existing_s["km"] = s.get("km")
-                            existing_km[key] = s.get("km")
-                            break
-            print(f"  {new_count} nya kvitton, {added} nya skift")
+            print(f"  {new_count} nya kvitton")
+
+        print("Söker passrapport...")
+        new_shifts = fetch_all_shifts(page, from_str, to_str, existing_km)
+        added = 0
+        for s in new_shifts:
+            key = (s.get("passnr"), s.get("forar"))
+            if key not in seen:
+                seen.add(key)
+                all_shifts.append(s)
+                added += 1
+            elif s.get("km") and key not in existing_km:
+                for existing_s in all_shifts:
+                    if (existing_s.get("passnr"), existing_s.get("forar")) == key:
+                        existing_s["km"] = s.get("km")
+                        existing_km[key] = s.get("km")
+                        break
+        print(f"{added} nya skift")
 
         data["trips"] = list(existing.values())
         data["shifts"] = all_shifts
