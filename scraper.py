@@ -48,13 +48,17 @@ def scrape_day(page, forar_id, date_str):
     page.wait_for_timeout(1500)
 
     receipts = []
-    rows = page.query_selector_all("table tr")
-    print(f"    {date_str}: {len(rows)} rows")
-    for row in rows[1:]:
-        cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
-        if len(cells) >= 5 and "-" in cells[4]:
-            receipts.append(cells[4])
-    print(f"    Found {len(receipts)} receipts")
+    # Hitta rätt tabell (den med Kvittonr i header)
+    tables = page.query_selector_all("table")
+    for table in tables:
+        header = table.query_selector("tr")
+        if header and "Kvittonr" in header.inner_text():
+            rows = table.query_selector_all("tr")
+            for row in rows[1:]:
+                cells = [c.inner_text().strip() for c in row.query_selector_all("td")]
+                if len(cells) >= 5 and "-" in cells[4]:
+                    receipts.append(cells[4])
+            break
     return receipts
 
 def scrape_trip_detail(page, kvitto):
