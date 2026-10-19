@@ -230,7 +230,6 @@ function formatShiftDate(str) {
 
 function render() {
   try {
-  try {
   const isTodayNow = isToday(currentDate);
   const isCurrent = isCurrentPeriod();
   const dateEl = document.getElementById('current-date');
@@ -391,10 +390,6 @@ function render() {
   }
 
   document.getElementById('dashboard').innerHTML = html;
-
-  } catch (e) {
-    document.getElementById('content').innerHTML = 'Fel: ' + e.message + '<br>' + e.stack;
-  }
 
   } catch (e) {
     document.getElementById('content').innerHTML = 'Fel: ' + e.message;
