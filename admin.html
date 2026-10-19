@@ -77,7 +77,6 @@
     <button onclick="location.href='index.html'" style="margin-top:16px;">Tillbaka</button>
   </div>
 
-  <div id="debug" style="background:#ffe; padding:8px; font-size:12px; margin:8px;"></div>
   <div id="admin-app">
     <header>
       <button id="back" class="hidden" onclick="goBack()">←</button>
@@ -245,12 +244,8 @@
 
     async function loadData() {
       const monthsToLoad = getMonthsInPeriod();
-      const debug = document.getElementById('debug');
-      debug.innerHTML = 'Laddar: ' + monthsToLoad.join(', ');
       await Promise.all(monthsToLoad.map(loadMonth));
       mergeLoadedData();
-      const ids = getAllDriverIds();
-      debug.innerHTML = 'Skift: ' + (data.shifts?.length || 0) + ', Förare: ' + ids.length + '<br>' + ids.sort().join(', ');
 
       try {
         const rows = await supabaseFetch('drivers?select=*');
