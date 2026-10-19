@@ -72,12 +72,14 @@
   <script src="script.js"></script>
   <script>
     var menu = [
-      { id: 'kordata', icon: '🚗', label: 'Körpassdata' },
-      { id: 'statistik', icon: '📊', label: 'Statistik' },
-      { id: 'toplistor', icon: '🏆', label: 'Toplistor' },
-      { id: 'kommunikation', icon: '💬', label: 'Kommunikation' },
-      { id: 'kalender', icon: '📅', label: 'Kalender' },
-      { id: 'installningar', icon: '⚙️', label: 'Inställningar' }
+      { id: 'kordata', icon: '🚗', label: 'Körpassdata', roles: ['standard', 'admin', 'agare', 'superadmin'] },
+      { id: 'akeridata', icon: '📊', label: 'Åkeridata', roles: ['admin', 'agare', 'superadmin'] },
+      { id: 'chaufforer', icon: '👥', label: 'Chaufförer', roles: ['admin', 'agare', 'superadmin'] },
+      { id: 'statistik', icon: '📈', label: 'Statistik', roles: ['standard', 'admin', 'agare', 'superadmin'] },
+      { id: 'toplistor', icon: '🏆', label: 'Toplistor', roles: ['standard', 'admin', 'agare', 'superadmin'] },
+      { id: 'kommunikation', icon: '💬', label: 'Kommunikation', roles: ['standard', 'admin', 'agare', 'superadmin'] },
+      { id: 'kalender', icon: '📅', label: 'Kalender', roles: ['standard', 'admin', 'agare', 'superadmin'] },
+      { id: 'installningar', icon: '⚙️', label: 'Inställningar', roles: ['standard', 'admin', 'agare', 'superadmin'] }
     ];
 
     var current = null;
@@ -175,6 +177,10 @@
     }
 
     function openItem(id) {
+      if (id === 'akeridata' || id === 'chaufforer') {
+        location.href = 'admin.html?view=' + id;
+        return;
+      }
       if (id === 'kordata') {
         localStorage.setItem('taxi_view', 'kordata');
         document.getElementById('app').style.display = 'none';
