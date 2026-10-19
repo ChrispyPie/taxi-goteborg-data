@@ -249,6 +249,10 @@
     }
 
     async function loadData() {
+      if (!currentUserId) {
+        location.href = 'index.html';
+        return;
+      }
       const monthsToLoad = getMonthsInPeriod();
       await Promise.all(monthsToLoad.map(loadMonth));
       mergeLoadedData();
