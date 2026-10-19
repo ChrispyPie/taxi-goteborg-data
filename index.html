@@ -153,21 +153,7 @@
       var content = document.getElementById('content');
       var title = document.getElementById('title');
 
-      if (current === 'admin') {
-        title.textContent = 'Admin';
-        var html = '<div class="grid">';
-        var adminItem = menu.find(m => m.id === 'admin');
-        if (adminItem && adminItem.submenu) {
-          for (var i = 0; i < adminItem.submenu.length; i++) {
-            html += '<div class="icon" onclick="openItem(\'' + adminItem.submenu[i].id + '\')">';
-            html += '<div class="emoji">' + adminItem.submenu[i].icon + '</div>';
-            html += '<div class="label">' + adminItem.submenu[i].label + '</div>';
-            html += '</div>';
-          }
-        }
-        html += '</div>';
-        content.innerHTML = html;
-      } else if (current) {
+      if (current) {
         title.textContent = current;
         content.innerHTML = '<div class="section"><p>Kommer snart: ' + current + '</p></div>';
       } else {
@@ -185,12 +171,7 @@
 
     function openItem(id) {
       if (id === 'admin') {
-        current = 'admin';
-        renderMenu();
-        return;
-      }
-      if (id === 'akeridata' || id === 'chaufforer') {
-        location.href = 'admin.html?view=' + id;
+        location.href = 'admin.html';
         return;
       }
       if (id === 'kordata') {
