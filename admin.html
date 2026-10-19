@@ -28,6 +28,10 @@
     .row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #edf2f7; cursor: pointer; }
     .row:hover { background: #f7fafc; }
     .row:last-child { border-bottom: none; }
+    .row.expandable { cursor: pointer; }
+    .row .expand-icon { margin-right: 8px; font-size: 12px; color: #718096; }
+    .sub-row { padding-left: 32px; background: #f7fafc; }
+    .sub-sub-row { padding-left: 48px; background: #edf2f7; }
     .row .label { flex: 1; font-weight: 500; }
     .row .value { font-weight: 600; }
     .row.total { background: #f7fafc; font-weight: 600; }
@@ -134,8 +138,8 @@
     let calMonth = new Date();
     let editingDriver = localStorage.getItem('admin_editing') || null;
     let currentUserId = localStorage.getItem('taxi_driver') || '';
-    let selectedDay = null;
-    let selectedCar = null;
+    let expandedDays = {};
+    let expandedCars = {};
 
     function getMyCategory() {
       const me = drivers[currentUserId];
@@ -398,14 +402,14 @@
       render();
     }
 
-    function selectDay(ymd) {
-      selectedDay = ymd;
-      selectedCar = null;
+    function toggleDay(ymd) {
+      expandedDays[ymd] = !expandedDays[ymd];
       render();
     }
 
-    function selectCar(car) {
-      selectedCar = car;
+    function toggleCar(ymd, car) {
+      const key = ymd + '_' + car;
+      expandedCars[key] = !expandedCars[key];
       render();
     }
 
@@ -441,13 +445,7 @@
     }
 
     function renderAkeridata(content) {
-      if (selectedCar) {
-        renderCarDrivers(content);
-      } else if (selectedDay) {
-        renderDayCars(content);
-      } else {
-        renderDayList(content);
-      }
+      renderDayList(content);
     }
 
     function renderDayList(content) {
@@ -470,7 +468,35 @@
       Object.entries(byDay).sort().reverse().forEach(([date, amount]) => {
         const parts = date.split('-');
         const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        html += `<div class="row" onclick="selectDay('${date}')"><span class="label">${formatDate(d)}</span><span class="value">${formatSEK(amount)}</span></div>`;
+        const isExpanded = expandedDays[date];
+        const icon = isExpanded ? '−' : '+';
+        html += `<div class="row expandable" onclick="toggleDay('${date}')"><span class="expand-icon">${icon}</span><span class="label">${formatDate(d)}</span><span class="value">${formatSEK(amount)}</span></div>`;
+        
+        if (isExpanded) {
+          const dayTrips = trips.filter(t => (t.startdatum || '').slice(0, 10) === date);
+          const byCar = {};
+          dayTrips.forEach(t => {
+            const car = t.taxi || 'Okänd';
+            if (!byCar[car]) byCar[car] = { amount: 0, drivers: {} };
+            byCar[car].amount += parseAmount(t.belopp);
+            const driver = t.forar || 'Okänd';
+            if (!byCar[car].drivers[driver]) byCar[car].drivers[driver] = 0;
+            byCar[car].drivers[driver] += parseAmount(t.belopp);
+          });
+          
+          Object.entries(byCar).sort((a, b) => b[1].amount - a[1].amount).forEach(([car, data]) => {
+            const carKey = date + '_' + car;
+            const carExpanded = expandedCars[carKey];
+            const carIcon = carExpanded ? '−' : '+';
+            html += `<div class="row sub-row expandable" onclick="event.stopPropagation();toggleCar('${date}','${car}')"><span class="expand-icon">${carIcon}</span><span class="label">${car}</span><span class="value">${formatSEK(data.amount)}</span></div>`;
+            
+            if (carExpanded) {
+              Object.entries(data.drivers).sort((a, b) => b[1] - a[1]).forEach(([driver, driverAmount]) => {
+                html += `<div class="row sub-sub-row"><span class="label">${getDisplayName(driver)}</span><span class="value">${formatSEK(driverAmount)}</span></div>`;
+              });
+            }
+          });
+        }
       });
       html += '</div>';
       content.innerHTML = html;
