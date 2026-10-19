@@ -1,5 +1,6 @@
 const MASTER_PASSWORD = 'taxi2026';
 let data = {};
+let currentView = 'day';
 let currentDate = new Date();
 let currentTab = localStorage.getItem('taxi_tab') || 'dag';
 let currentDriver = localStorage.getItem('taxi_driver') || '';
