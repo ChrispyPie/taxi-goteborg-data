@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Engångsscript: Uppdatera km + start/slut för befintliga skift.
+Engångsscript: Uppdatera km för skift inom datumintervall.
 """
 
 import os
@@ -11,6 +11,8 @@ from playwright.sync_api import sync_playwright
 STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
 PASSWORD = os.environ.get("STIG_PASSWORD", "")
+FROM_DAY = int(os.environ.get("FROM_DAY", "1"))
+TO_DAY = int(os.environ.get("TO_DAY", "18"))
 
 def login(page):
     page.goto(f"{STIG_URL}/Login.aspx")
@@ -23,8 +25,6 @@ def login(page):
     return "Login.aspx" not in page.url
 
 def get_shift_data(page, passnr, forar, start_date):
-    """Sök specifikt skift och hämta km."""
-    # Extrahera datum från start (format: 20261001 17:28)
     date_str = ""
     if start_date and len(start_date) >= 8:
         d = start_date.replace('\xa0', ' ').split()[0]
@@ -44,7 +44,6 @@ def get_shift_data(page, passnr, forar, start_date):
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
 
-    # Hitta raden med rätt passnr
     result = page.evaluate(f"""
         () => {{
             const tables = document.querySelectorAll('table');
@@ -72,8 +71,16 @@ def get_shift_data(page, passnr, forar, start_date):
     text = page.inner_text("body")
     match = re.search(r'Totalt antal km i pass:\s*([\d,]+)', text)
     km = match.group(1).replace(',', '.') if match else None
-
     return {"start": result.get("start"), "slut": result.get("slut"), "km": km}
+
+def in_range(start_date):
+    if not start_date:
+        return False
+    d = start_date.replace('\xa0', ' ').split()[0]
+    if len(d) >= 8:
+        day = int(d[6:8])
+        return FROM_DAY <= day <= TO_DAY
+    return False
 
 def main():
     if not PASSWORD:
@@ -84,7 +91,8 @@ def main():
         data = json.load(f)
 
     shifts = data.get("shifts", [])
-    print(f"Totalt {len(shifts)} skift")
+    to_update = [s for s in shifts if in_range(s.get("start", ""))]
+    print(f"Skift dag {FROM_DAY}-{TO_DAY}: {len(to_update)}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -96,7 +104,7 @@ def main():
             return
 
         updated = 0
-        for s in shifts:
+        for s in to_update:
             passnr = s.get("passnr")
             forar = s.get("forar")
             start = s.get("start", "")
@@ -105,10 +113,6 @@ def main():
             result = get_shift_data(page, passnr, forar, start)
             if result and result.get("km"):
                 s["km"] = result["km"]
-                if not s.get("start") and result.get("start"):
-                    s["start"] = result["start"]
-                if not s.get("slut") and result.get("slut"):
-                    s["slut"] = result["slut"]
                 updated += 1
                 print(f"  {passnr}: {result.get('km')} km")
             else:
