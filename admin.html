@@ -795,7 +795,9 @@
     }
 
     async function activateDriver(id) {
-      const pw = generatePassword();
+      const choice = prompt('Lösenord:\n1 = Autogenerera\nEller skriv eget lösenord:');
+      if (choice === null) return;
+      const pw = (choice === '1' || choice === '') ? generatePassword() : choice;
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       try {
         await supabaseFetch('drivers', {
@@ -804,15 +806,25 @@
           headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
         });
         drivers[id] = { ...drivers[id], id, password: pw, expiry, activated: true };
-        const link = 'https://chrispypie.github.io/taxi-goteborg-data/';
-        const msg = 'TaxiData\n\nLänk: ' + link + '\nFörar-ID: ' + id + '\nLösenord: ' + pw + '\n\nLogga in inom 24 timmar.';
-        if (navigator.share) {
-          navigator.share({ title: 'TaxiData', text: msg }).catch(() => {});
-        }
-        alert('Aktiverad!\n\nLösenord: ' + pw + '\n\nLänk: ' + link);
+        alert('Aktiverad!\nLösenord: ' + pw);
         render();
       } catch (e) {
         alert('Fel: ' + e.message);
+      }
+    }
+
+    function shareDriver(id) {
+      const d = drivers[id];
+      if (!d || !d.password) {
+        alert('Ingen aktivering att dela');
+        return;
+      }
+      const link = 'https://chrispypie.github.io/taxi-goteborg-data/';
+      const msg = 'TaxiData\n\nLänk: ' + link + '\nFörar-ID: ' + id + '\nLösenord: ' + d.password + '\n\nLogga in inom 24 timmar.';
+      if (navigator.share) {
+        navigator.share({ title: 'TaxiData', text: msg }).catch(() => {});
+      } else {
+        alert(msg);
       }
     }
 
