@@ -150,15 +150,12 @@
     function renderMenu() {
       var content = document.getElementById('content');
       var title = document.getElementById('title');
-      var back = document.getElementById('back');
 
       if (current) {
         title.textContent = current;
-        back.classList.remove('hidden');
         content.innerHTML = '<div class="section"><p>Kommer snart: ' + current + '</p></div>';
       } else {
         title.textContent = 'TaxiData';
-        back.classList.add('hidden');
         var html = '<div class="grid">';
         for (var i = 0; i < menu.length; i++) {
           html += '<div class="icon" onclick="openItem(\'' + menu[i].id + '\')">';
