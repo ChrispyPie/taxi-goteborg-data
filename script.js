@@ -13,11 +13,11 @@ const UBER_FEE = 0.26;
 
 async function loadData() {
   try {
-    document.getElementById('content').innerHTML = 'Laddar data...';
+    
     const res = await fetch('data.json?t=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     data = await res.json();
-    document.getElementById('content').innerHTML = 'Data laddad, renderar...';
+    
     const seenShifts = new Set();
     data.shifts = (data.shifts || []).filter(s => {
       const key = (s.passnr || '') + '|' + (s.forar || '710022');
@@ -230,6 +230,7 @@ function formatShiftDate(str) {
 
 function render() {
   try {
+  try {
   const isTodayNow = isToday(currentDate);
   const isCurrent = isCurrentPeriod();
   const dateEl = document.getElementById('current-date');
@@ -393,6 +394,10 @@ function render() {
 
   } catch (e) {
     document.getElementById('content').innerHTML = 'Fel: ' + e.message + '<br>' + e.stack;
+  }
+
+  } catch (e) {
+    document.getElementById('content').innerHTML = 'Fel: ' + e.message;
   }
 }
 
