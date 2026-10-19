@@ -38,7 +38,6 @@ def get_shift_data(page, passnr, forar):
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1000)
 
-    # Hitta raden och hämta start/slut, sedan klicka förstoringsglas
     result = page.evaluate(f"""
         () => {{
             const tables = document.querySelectorAll('table');
@@ -81,12 +80,7 @@ def main():
         data = json.load(f)
 
     shifts = data.get("shifts", [])
-    missing = [s for s in shifts if not s.get("km") or s.get("km") == "0"]
-    print(f"Skift utan km: {len(missing)} av {len(shifts)}")
-
-    if not missing:
-        print("Alla skift har km")
-        return
+    print(f"Totalt {len(shifts)} skift")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -98,21 +92,23 @@ def main():
             return
 
         updated = 0
-        for s in missing:
+        for s in shifts:
             passnr = s.get("passnr")
             forar = s.get("forar")
             if not passnr or not forar:
                 continue
             result = get_shift_data(page, passnr, forar)
             if result:
+                # Alltid uppdatera km
                 if result.get("km"):
                     s["km"] = result["km"]
-                if result.get("start"):
+                # Bara uppdatera start/slut om de saknas
+                if not s.get("start") and result.get("start"):
                     s["start"] = result["start"]
-                if result.get("slut"):
+                if not s.get("slut") and result.get("slut"):
                     s["slut"] = result["slut"]
                 updated += 1
-                print(f"  {passnr}: {result.get('km')} km, {result.get('start')} - {result.get('slut')}")
+                print(f"  {passnr}: {result.get('km')} km")
             else:
                 print(f"  {passnr}: misslyckades")
 
