@@ -537,7 +537,7 @@
                   });
                   
                   const hours = shift ? parseFloat((shift.tid || '0').replace(':', '.')) : 0;
-                  const km = driverTrips.reduce((sum, t) => sum + parseFloat((t.kilometer || '0').replace(',', '.')), 0);
+                  const km = shift ? parseFloat((shift.km || '0').replace(',', '.')) : 0;
                   const krPerHour = hours > 0 ? driverAmount / hours : 0;
                   const krPerMil = km > 0 ? driverAmount / (km / 10) : 0;
                   
