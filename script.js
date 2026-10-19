@@ -229,7 +229,7 @@ function formatShiftDate(str) {
 }
 
 function render() {
-  document.getElementById('content').innerHTML = 'Render startar...';
+  try {
   const isTodayNow = isToday(currentDate);
   const isCurrent = isCurrentPeriod();
   const dateEl = document.getElementById('current-date');
@@ -390,6 +390,10 @@ function render() {
   }
 
   document.getElementById('dashboard').innerHTML = html;
+
+  } catch (e) {
+    document.getElementById('content').innerHTML = 'Fel: ' + e.message + '<br>' + e.stack;
+  }
 }
 
 function toggle(el) {
