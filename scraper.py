@@ -18,7 +18,7 @@ import json
 import re
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
-from tripkey import TripIndex
+from tripkey import TripIndex, is_superseded
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 # Status för varje körning skrivs till scrape_status.json (committas inte).
@@ -293,6 +293,8 @@ def scrape_driver(page, forar_id, existing, start_date, end_date):
         for kvitto in receipts:
             key = (kvitto, forar_id, date_str)
             found = existing.find(kvitto, forar_id, date_str)
+            if found is None and is_superseded(existing, kvitto, forar_id, date_str):
+                continue  # en rättad version (-02 o.s.v.) finns redan; -01 hämtas inte
             if found is not None:
                 # Komplett post: hoppa över (sparar anrop). Ofullständig: hämta om, högst en gång per körning.
                 if trip_complete(found) or key in REFETCHED:

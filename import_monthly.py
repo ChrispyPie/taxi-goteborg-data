@@ -7,7 +7,7 @@ import os
 import json
 from datetime import datetime
 from playwright.sync_api import sync_playwright
-from tripkey import TripIndex, clearly_same
+from tripkey import TripIndex, clearly_same, apply_corrections
 
 STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
@@ -170,6 +170,8 @@ def main():
             data["trips"].append(t)
             added_t += 1
 
+        data["trips"], replaced = apply_corrections(data["trips"])
+        print(f"Rättade kvitton: {len(replaced)} äldre versioner ersatta")
         print(f"Tillagda: +{added_s} skift, +{added_t} körningar, {fixed} ofullständiga kompletterade")
         browser.close()
     

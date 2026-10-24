@@ -72,7 +72,7 @@ def dedupe_trips(doc):
     """Spärr mot dubbletter (nyckel taxi + förare + kvittonr + startdatum, se tripkey.py):
     en rad som är EXAKT lika en tidigare rad med samma nyckel skickas inte. Rader som delar nyckel
     men skiljer sig behålls (och varnas för)."""
-    from tripkey import norm, same_trip
+    from tripkey import norm, same_trip, apply_corrections
     groups, out, dropped, differ = {}, [], 0, 0
     for t in doc.get('trips', []):
         norm(t)
@@ -86,7 +86,10 @@ def dedupe_trips(doc):
             differ += 1
         g.append(t)
         out.append(t)
+    out, replaced = apply_corrections(out)
     doc['trips'] = out
+    if replaced:
+        print(f'Rättade kvitton: {len(replaced)} äldre versioner (-01 o.s.v.) ersatta av högre version')
     if dropped or differ:
         print(f'Dubblettspärr: {dropped} identiska borttagna, {differ} med samma nyckel men olika fält behållna')
     return doc

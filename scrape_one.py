@@ -9,7 +9,7 @@ import sys
 import json
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
-from tripkey import TripIndex
+from tripkey import TripIndex, is_superseded
 
 STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
@@ -156,7 +156,7 @@ def main():
             date_str = current.strftime("%Y-%m-%d")
             receipts = scrape_day(page, forar_id, date_str)
             for kvitto in receipts:
-                if existing.find(kvitto, forar_id, date_str) is not None:
+                if existing.find(kvitto, forar_id, date_str) is not None or is_superseded(existing, kvitto, forar_id, date_str):
                     continue
                 detail = scrape_trip_detail(page, kvitto)
                 existing.add({"kvittonr": kvitto, "forar": forar_id, **detail})
