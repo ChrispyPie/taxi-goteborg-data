@@ -1,3 +1,5 @@
+const TRIP_API_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
+const TRIP_API_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
 let data = {};
 let currentView = 'day';
 let currentDate = new Date();
@@ -13,9 +15,15 @@ const UBER_FEE = 0.26;
 async function loadData() {
   try {
     
-    const res = await fetch('data.json?t=' + Date.now());
+    // Resedata hämtas från servern (Supabase) och kräver inloggning.
+    // Förare får bara sina egna resor; inga publika datafiler används.
+    const res = await fetch(TRIP_API_URL + '/rest/v1/rpc/get_trip_data', {
+      method: 'POST',
+      headers: { 'apikey': TRIP_API_KEY, 'Authorization': 'Bearer ' + TRIP_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_token: localStorage.getItem('taxi_session') || '', p_dataset: 'current' })
+    });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    data = await res.json();
+    data = (await res.json()) || {};
     
     const seenShifts = new Set();
     data.shifts = (data.shifts || []).filter(s => {
