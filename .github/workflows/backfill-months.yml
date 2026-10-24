@@ -1,0 +1,45 @@
+name: Hämta månadsfiler (bakåt)
+
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'Månader, kommaseparerade (YYYY-MM,YYYY-MM). Tomt = använd year'
+        required: false
+        default: ''
+      year:
+        description: 'Helt år (12 månader), t.ex. 2025'
+        required: false
+        default: ''
+      pause_s:
+        description: 'Paus mellan månader i sekunder'
+        required: true
+        default: '150'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trip-data
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install playwright && playwright install chromium --with-deps
+      - name: Hämta månadsfiler
+        env:
+          TZ: Europe/Stockholm
+          STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
+          STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          BF_MONTHS: ${{ inputs.months }}
+          BF_YEAR: ${{ inputs.year }}
+          BF_PAUSE_S: ${{ inputs.pause_s }}
+        run: python backfill_months.py
