@@ -123,8 +123,8 @@ def main():
     except:
         data = {"shifts": [], "trips": []}
     
-    seen_shifts = {(s.get("passnr"), s.get("forar")) for s in data.get("shifts", [])}
-    seen_trips = {(t.get("kvittonr"), t.get("forar")) for t in data.get("trips", [])}
+    seen_shifts = {(s.get("passnr"), s.get("forar") or "710022") for s in data.get("shifts", [])}
+    seen_trips = {(t.get("kvittonr"), t.get("forar") or "710022") for t in data.get("trips", [])}
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)

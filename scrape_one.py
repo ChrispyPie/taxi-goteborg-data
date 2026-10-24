@@ -125,7 +125,13 @@ def main():
     except:
         data = {"trips": [], "shifts": []}
 
-    existing = {t.get("kvittonr"): t for t in data.get("trips", [])}
+    # Nyckel = (kvittonr, förare). Kvittonummer är per bil, så samma nummer finns hos flera förare.
+    # Äldre testposter utan "forar" gäller 710022 (annars blir de dubbletter).
+    existing = {}
+    for t in data.get("trips", []):
+        if not t.get("forar"):
+            t["forar"] = "710022"
+        existing[(t.get("kvittonr"), t.get("forar"))] = t
 
     seen = set()
     all_shifts = list(data.get("shifts", []))
@@ -153,10 +159,10 @@ def main():
             date_str = current.strftime("%Y-%m-%d")
             receipts = scrape_day(page, forar_id, date_str)
             for kvitto in receipts:
-                if kvitto in existing:
+                if (kvitto, forar_id) in existing:
                     continue
                 detail = scrape_trip_detail(page, kvitto)
-                existing[kvitto] = {"kvittonr": kvitto, "forar": forar_id, **detail}
+                existing[(kvitto, forar_id)] = {"kvittonr": kvitto, "forar": forar_id, **detail}
                 new_count += 1
                 print(f"  Ny: {kvitto}")
             current += timedelta(days=1)

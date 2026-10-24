@@ -68,9 +68,32 @@ def send_status(path, failed):
     print(f'Status skickad: {res}')
 
 
+def dedupe_trips(doc):
+    """Spärr mot dubbletter: samma (kvittonr, förare) med identiska fält skickas bara en gång.
+    Rader som delar kvitto men skiljer sig behålls (och varnas för)."""
+    seen, out, dropped, differ = {}, [], 0, 0
+    for t in doc.get('trips', []):
+        if not t.get('forar'):
+            t['forar'] = '710022'
+        key = (t.get('kvittonr'), t.get('forar'))
+        if key in seen:
+            if seen[key] == t:
+                dropped += 1
+                continue
+            differ += 1
+        else:
+            seen[key] = t
+        out.append(t)
+    doc['trips'] = out
+    if dropped or differ:
+        print(f'Dubblettspärr: {dropped} identiska borttagna, {differ} med samma kvitto men olika fält behållna')
+    return doc
+
+
 def ingest(path, name):
     with open(path, encoding='utf-8') as f:
         doc = json.load(f)
+    doc = dedupe_trips(doc)
     return call('ingest_dataset', {'p_name': name, 'p_doc': doc, 'p_source': path})
 
 
