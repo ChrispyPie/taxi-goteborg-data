@@ -20,6 +20,22 @@ from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
+# Status för varje körning skrivs till scrape_status.json (committas inte).
+# Workflowet skickar den till Supabase så att appen kan visa om servern är uppe.
+RUN_STARTED = datetime.utcnow().isoformat() + "Z"
+_status_written = False
+
+
+def write_status(result, message="", new_trips=None):
+    global _status_written
+    _status_written = True
+    try:
+        with open("scrape_status.json", "w", encoding="utf-8") as f:
+            json.dump({"result": result, "message": message[:300], "started_at": RUN_STARTED,
+                       "finished_at": datetime.utcnow().isoformat() + "Z", "new_trips": new_trips}, f)
+    except Exception as e:
+        print(f"Kunde inte skriva scrape_status.json: {e}")
+
 STIG_URL = os.environ.get("STIG_BASE_URL", "https://stig.taxinet.se")
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
 PASSWORD = os.environ.get("STIG_PASSWORD", "")
@@ -259,6 +275,7 @@ def scrape_driver(page, forar_id, existing, start_date, end_date):
 def main():
     if not PASSWORD:
         print("STIG_PASSWORD saknas")
+        write_status("error", "inloggningsuppgifter saknas")
         return
 
     try:
@@ -312,11 +329,13 @@ def main():
         except StigUnreachable as e:
             print(f"::error::STIG unreachable (Login.aspx timeout) efter {LOGIN_ATTEMPTS} försök")
             print(f"STIG unreachable (Login.aspx timeout): {e}")
+            write_status("unreachable", "Login.aspx svarade inte")
             browser.close()
             sys.exit(1)
 
         if not logged_in:
             print("Inloggning misslyckades (fel användarnamn/lösenord eller ändrad inloggningssida)")
+            write_status("login_failed", "inloggningen misslyckades")
             browser.close()
             sys.exit(1)
 
@@ -364,10 +383,22 @@ def main():
             exit_code = 3
 
         print(f"Totalt {total_new} nya kvitton, {len(all_shifts)} skift")
+        write_status("ok" if exit_code == 0 else "partial", f"exit {exit_code}", total_new)
         browser.close()
 
     if exit_code:
         sys.exit(exit_code)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except PlaywrightTimeoutError as e:
+        if not _status_written:
+            write_status("unreachable", f"timeout: {str(e).splitlines()[0]}")
+        raise
+    except SystemExit:
+        raise
+    except Exception as e:
+        if not _status_written:
+            write_status("error", f"{type(e).__name__}")
+        raise
