@@ -88,8 +88,9 @@ def dedupe_trips(doc):
         out.append(t)
     out, replaced = apply_corrections(out)
     doc['trips'] = out
+    doc['_replaced'] = replaced
     if replaced:
-        print(f'Rättade kvitton: {len(replaced)} äldre versioner (-01 o.s.v.) ersatta av högre version')
+        print(f'Rättade kvitton: {len(replaced)} originalversioner (-01 o.s.v.) sparas som ersatta, räknas inte')
     if dropped or differ:
         print(f'Dubblettspärr: {dropped} identiska borttagna, {differ} med samma nyckel men olika fält behållna')
     return doc
@@ -99,6 +100,12 @@ def ingest(path, name):
     with open(path, encoding='utf-8') as f:
         doc = json.load(f)
     doc = dedupe_trips(doc)
+    replaced = doc.pop('_replaced', [])
+    if replaced:
+        try:
+            call('store_replaced_trips', {'p_dataset': name, 'p_rows': replaced})
+        except Exception as e:
+            print(f'::warning::Kunde inte spara ersatta kvitton: {type(e).__name__}')
     return call('ingest_dataset', {'p_name': name, 'p_doc': doc, 'p_source': path})
 
 

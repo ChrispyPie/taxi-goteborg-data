@@ -98,7 +98,8 @@ def _supersedes(hi, lo):
 
 
 def apply_corrections(trips):
-    """Tar bort rader som ersatts av en högre version. Returnerar (behållna, borttagna)."""
+    """Skiljer ut rader som ersatts av en högre version. Returnerar (räknade, ersatta originals med ersatt_av).
+    Originalen sparas separat (Supabase private.ersatta_kvitton) och räknas/visas aldrig."""
     groups = {}
     for t in trips:
         groups.setdefault((split_kvitto(t.get("kvittonr"))[0], str(t.get("forar") or DEFAULT_FORAR)), []).append(t)
@@ -109,7 +110,16 @@ def apply_corrections(trips):
         for lo in g:
             if any(_supersedes(hi, lo) for hi in g if hi is not lo):
                 drop.add(id(lo))
-    return [t for t in trips if id(t) not in drop], [t for t in trips if id(t) in drop]
+    kept = [t for t in trips if id(t) not in drop]
+    replaced = []
+    for g in groups.values():
+        for lo in g:
+            if id(lo) in drop:
+                his = [hi for hi in g if hi is not lo and _supersedes(hi, lo) and id(hi) not in drop]
+                his = his or [hi for hi in g if hi is not lo and _supersedes(hi, lo)]
+                best = max(his, key=lambda h: split_kvitto(h.get("kvittonr"))[1])
+                replaced.append(dict(lo, ersatt_av=best.get("kvittonr")))
+    return kept, replaced
 
 
 def is_superseded(index, kvittonr, forar, startdatum=None, taxi=None):
