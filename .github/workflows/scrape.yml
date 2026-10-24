@@ -69,3 +69,14 @@ jobs:
           git diff --staged --quiet || git commit -m "Update data from scrape [skip ci]"
           git push origin gh-pages || true
           git checkout main
+
+      - name: Synka data.json till Supabase
+        # Gör inget om SUPABASE_SERVICE_KEY inte finns ännu. Fel här stoppar inte scrapern.
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          git show main:data.json > "$RUNNER_TEMP/data.json" 2>/dev/null || cp data.json "$RUNNER_TEMP/data.json"
+          git show main:sync_supabase.py > "$RUNNER_TEMP/sync_supabase.py" 2>/dev/null || cp sync_supabase.py "$RUNNER_TEMP/sync_supabase.py"
+          python3 "$RUNNER_TEMP/sync_supabase.py" "$RUNNER_TEMP/data.json=current"
