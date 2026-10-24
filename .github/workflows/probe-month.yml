@@ -1,0 +1,40 @@
+name: Probe month (engångstest)
+
+on:
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Månad att testhämta (YYYY-MM)'
+        required: true
+        default: '2026-08'
+      old_month:
+        description: 'Gammal månad att bara lista filer för'
+        required: true
+        default: '2020-01'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trip-data
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install playwright && playwright install chromium --with-deps
+      - name: Testhämtning
+        env:
+          TZ: Europe/Stockholm
+          STIG_USERNAME: ${{ secrets.STIG_USERNAME }}
+          STIG_PASSWORD: ${{ secrets.STIG_PASSWORD }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PROBE_MONTH: ${{ inputs.month }}
+          PROBE_OLD_MONTH: ${{ inputs.old_month }}
+        run: python probe_month.py
