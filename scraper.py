@@ -18,7 +18,7 @@ import json
 import re
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
-from tripkey import TripIndex, is_superseded
+from tripkey import TripIndex, is_superseded, shift_key
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 # Status för varje körning skrivs till scrape_status.json (committas inte).
@@ -258,7 +258,7 @@ def fetch_all_shifts(page, from_date, to_date, existing_km):
 
     lookups = 0
     for s in shifts:
-        key = (s["passnr"], s["forar"])
+        key = shift_key(s)
         if existing_km.get(key):
             s["km"] = existing_km[key]
             continue
@@ -332,10 +332,10 @@ def main():
     existing_km = {}
     for s in data.get("shifts", []):
         forar = s.get("forar") or "710022"
-        key = (s.get("passnr"), forar)
+        s["forar"] = forar
+        key = shift_key(s)
         if key not in seen:
             seen.add(key)
-            s["forar"] = forar
             all_shifts.append(s)
             if s.get("km"):
                 existing_km[key] = s.get("km")
@@ -405,7 +405,7 @@ def main():
             new_shifts = fetch_all_shifts(page, from_str, to_str, existing_km)
             added = refreshed = 0
             for s in new_shifts:
-                key = (s.get("passnr"), s.get("forar"))
+                key = shift_key(s)
                 if key not in seen:
                     seen.add(key)
                     all_shifts.append(s)
@@ -413,13 +413,13 @@ def main():
                     continue
                 # Befintligt pass som saknar fält kompletteras från passrapporten (inga extra anrop)
                 for existing_s in all_shifts:
-                    if (existing_s.get("passnr"), existing_s.get("forar")) == key and not shift_complete(existing_s):
+                    if shift_key(existing_s) == key and not shift_complete(existing_s):
                         merge_fields(existing_s, {k: v for k, v in s.items() if k != "km"})
                         refreshed += 1
                         break
                 if s.get("km") and key not in existing_km:
                     for existing_s in all_shifts:
-                        if (existing_s.get("passnr"), existing_s.get("forar")) == key:
+                        if shift_key(existing_s) == key:
                             existing_s["km"] = s.get("km")
                             existing_km[key] = s.get("km")
                             break

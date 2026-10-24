@@ -142,3 +142,9 @@ def is_superseded(index, kvittonr, forar, startdatum=None, taxi=None):
         if split_kvitto(k)[1] > n and any(_supersedes(t, probe) for t in index.by.get(k, [])):
             return True
     return False
+
+
+def shift_key(s):
+    """Nyckel för pass: passnr + förare + startdatum (passnr återanvänds, ibland efter två veckor)."""
+    d = _re.sub(r"\D", "", (s.get("start") or ""))[:8]
+    return (s.get("passnr") or "", s.get("forar") or "710022", d)
