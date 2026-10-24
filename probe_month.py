@@ -11,6 +11,7 @@ USERNAME = os.environ.get("STIG_USERNAME", "")
 PASSWORD = os.environ.get("STIG_PASSWORD", "")
 MONTH = os.environ.get("PROBE_MONTH", "2026-08")
 OLD_MONTH = os.environ.get("PROBE_OLD_MONTH", "2020-01")
+EXTRA_PASS = os.environ.get("PROBE_EXTRA_PASS", "")  # t.ex. 2026-09: hämta bara passfilen
 SB_URL = "https://lpfdryvukqmjlgenuzpb.supabase.co"
 KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 LIMIT_MS = 15_000
@@ -100,6 +101,18 @@ def main():
                 if r["status"] != 200 or r["ms"] > LIMIT_MS:
                     print("STOPP"); sys.exit(4)
                 put(kind, r["text"])
+
+            if EXTRA_PASS:
+                g2 = step(f"sök {EXTRA_PASS}", lambda: search(page, EXTRA_PASS))
+                put("meta", json.dumps({"grid": g2}, ensure_ascii=False), EXTRA_PASS)
+                rows2 = (g2 or [])[1:]
+                hits = [i for i, r in enumerate(rows2) if any("pass" in c.lower() for c in r)]
+                idx2 = hits[0] if len(hits) == 1 else 2
+                r = step(f"hämta pass {EXTRA_PASS}", lambda: page.evaluate(DL_JS, idx2))
+                print(f"  pass {EXTRA_PASS}: status {r['status']}, {r['ms']} ms, {r['len']} byte")
+                if r["status"] != 200 or r["ms"] > LIMIT_MS:
+                    print("STOPP"); sys.exit(4)
+                put("pass", r["text"], EXTRA_PASS)
 
             old = step(f"sök {OLD_MONTH} (bara lista)", lambda: search(page, OLD_MONTH))
             put("meta_old", json.dumps({"grid": old}, ensure_ascii=False), OLD_MONTH)

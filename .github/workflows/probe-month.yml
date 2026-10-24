@@ -11,6 +11,10 @@ on:
         description: 'Gammal månad att bara lista filer för'
         required: true
         default: '2020-01'
+      extra_pass:
+        description: 'Extra månad: hämta bara passfilen (tom = ingen)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -37,4 +41,5 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           PROBE_MONTH: ${{ inputs.month }}
           PROBE_OLD_MONTH: ${{ inputs.old_month }}
+          PROBE_EXTRA_PASS: ${{ inputs.extra_pass }}
         run: python probe_month.py
