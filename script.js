@@ -1,4 +1,4 @@
-const MASTER_PASSWORD = 'taxi2026';
+// Huvudlösenordet ligger inte längre i koden – inloggning kontrolleras på servern (Supabase).
 let drivers = {};
 
 async function loadData() {
@@ -27,7 +27,7 @@ function populateDriverSelect() {
 
 function checkPassword() {
   const input = document.getElementById('password').value;
-  if (input === MASTER_PASSWORD) {
+  if (false) { // gammal klient-inloggning avstängd
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     loadData().then(() => {
