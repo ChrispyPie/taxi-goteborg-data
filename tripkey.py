@@ -44,15 +44,25 @@ def clearly_same(a, b):
         str(a.get("forar") or DEFAULT_FORAR) == str(b.get("forar") or DEFAULT_FORAR)
 
 
+_KV = __import__('re').compile(r"(\d+)-(\d+)")
+
+
 class TripIndex:
     def __init__(self, trips=()):
         self.by = {}
+        self.rows = []      # behåller ursprunglig ordning
+        self.bases = {}     # grundnummer -> kvittonr, för snabb koll av rättelser
         for t in trips:
             self.add(t)
 
     def add(self, t):
         norm(t)
-        self.by.setdefault(str(t.get("kvittonr") or ""), []).append(t)
+        k = str(t.get("kvittonr") or "")
+        self.by.setdefault(k, []).append(t)
+        self.rows.append(t)
+        m = _KV.fullmatch(k.strip())
+        if m:
+            self.bases.setdefault(m.group(1), set()).add(k)
 
     def find(self, kvittonr, forar, startdatum=None, taxi=None):
         probe = {"kvittonr": kvittonr, "forar": forar, "startdatum": startdatum, "taxi": taxi}
@@ -62,7 +72,7 @@ class TripIndex:
         return None
 
     def all(self):
-        return [t for ts in self.by.values() for t in ts]
+        return list(self.rows)
 
 
 # --- Rättade kvitton -------------------------------------------------------------------------
@@ -126,8 +136,9 @@ def is_superseded(index, kvittonr, forar, startdatum=None, taxi=None):
     """True om index (TripIndex) redan har en högre version av kvittot – då behöver det inte hämtas."""
     base, n = split_kvitto(kvittonr)
     probe = {"kvittonr": kvittonr, "forar": forar, "startdatum": startdatum, "taxi": taxi}
-    for k, ts in index.by.items():
-        if split_kvitto(k)[0] == base and split_kvitto(k)[1] > n:
-            if any(_supersedes(t, probe) for t in ts):
-                return True
+    if base is None:
+        return False
+    for k in index.bases.get(base, ()):
+        if split_kvitto(k)[1] > n and any(_supersedes(t, probe) for t in index.by.get(k, [])):
+            return True
     return False
