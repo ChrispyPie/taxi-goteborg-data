@@ -50,6 +50,7 @@ LOGIN_ATTEMPTS = 3
 LOGIN_TIMEOUT_MS = 60_000
 LOGIN_BACKOFF_S = [30, 60]
 MAX_KM_LOOKUPS = int(os.environ.get("MAX_KM_LOOKUPS", "30"))
+REFETCHED = set()  # resor som redan hämtats om i denna körning
 
 
 class StigUnreachable(Exception):
@@ -82,6 +83,33 @@ def login(page):
     page.click("input[type='submit'], button, input[value*='Logga']")
     page.wait_for_load_state("networkidle")
     return "Login.aspx" not in page.url
+
+# Fullständighetskontroll: en befintlig post hoppas bara över om den är KOMPLETT.
+# Resa: kvittonr, förare, startdatum (ÅÅÅÅ-MM-DD), starttid (HH:MM), startzon, kredittyp och belopp måste finnas.
+# Pass: passnr, förare, start, slut, tid och antal resor måste finnas (km hämtas separat och räknas inte här).
+TRIP_REQUIRED = ("kvittonr", "forar", "startdatum", "starttid", "startzon", "kredittyp", "belopp")
+SHIFT_REQUIRED = ("passnr", "forar", "start", "slut", "tid", "resor")
+
+
+def _filled(v):
+    return v is not None and str(v).strip() != ""
+
+
+def trip_complete(t):
+    return all(_filled(t.get(k)) for k in TRIP_REQUIRED) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(t.get("startdatum"))) is not None
+
+
+def shift_complete(s):
+    return all(_filled(s.get(k)) for k in SHIFT_REQUIRED)
+
+
+def merge_fields(old, new):
+    """Fyll i/uppdatera fält från ny hämtning, men skriv aldrig över med tomma värden."""
+    for k, v in new.items():
+        if _filled(v):
+            old[k] = v
+    return old
+
 
 def scrape_day(page, forar_id, date_str):
     page.goto(f"{STIG_URL}/Resaposter.aspx")
@@ -264,6 +292,13 @@ def scrape_driver(page, forar_id, existing, start_date, end_date):
         for kvitto in receipts:
             key = (kvitto, forar_id)
             if key in existing:
+                # Komplett post: hoppa över (sparar anrop). Ofullständig: hämta om, högst en gång per körning.
+                if trip_complete(existing[key]) or key in REFETCHED:
+                    continue
+                REFETCHED.add(key)
+                detail = scrape_trip_detail(page, kvitto)
+                merge_fields(existing[key], {"kvittonr": kvitto, "forar": forar_id, **detail})
+                print(f"    Kompletterad: {kvitto}")
                 continue
             detail = scrape_trip_detail(page, kvitto)
             existing[key] = {"kvittonr": kvitto, "forar": forar_id, **detail}
@@ -284,7 +319,12 @@ def main():
     except:
         data = {"trips": [], "shifts": []}
 
-    existing = {(t.get("kvittonr"), t.get("forar")): t for t in data.get("trips", [])}
+    # Äldre testposter saknar ibland "forar"; de gäller 710022 (samma regel som i Supabase-importen)
+    existing = {}
+    for t in data.get("trips", []):
+        if not t.get("forar"):
+            t["forar"] = "710022"
+        existing[(t.get("kvittonr"), t.get("forar"))] = t
 
     seen = set()
     all_shifts = []
@@ -362,20 +402,27 @@ def main():
         print("Söker passrapport...")
         try:
             new_shifts = fetch_all_shifts(page, from_str, to_str, existing_km)
-            added = 0
+            added = refreshed = 0
             for s in new_shifts:
                 key = (s.get("passnr"), s.get("forar"))
                 if key not in seen:
                     seen.add(key)
                     all_shifts.append(s)
                     added += 1
-                elif s.get("km") and key not in existing_km:
+                    continue
+                # Befintligt pass som saknar fält kompletteras från passrapporten (inga extra anrop)
+                for existing_s in all_shifts:
+                    if (existing_s.get("passnr"), existing_s.get("forar")) == key and not shift_complete(existing_s):
+                        merge_fields(existing_s, {k: v for k, v in s.items() if k != "km"})
+                        refreshed += 1
+                        break
+                if s.get("km") and key not in existing_km:
                     for existing_s in all_shifts:
                         if (existing_s.get("passnr"), existing_s.get("forar")) == key:
                             existing_s["km"] = s.get("km")
                             existing_km[key] = s.get("km")
                             break
-            print(f"{added} nya skift")
+            print(f"{added} nya skift, {refreshed} kompletterade")
             data["shifts"] = all_shifts
             save_data(data)
         except Exception as e:

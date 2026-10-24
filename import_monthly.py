@@ -101,6 +101,15 @@ def parse_trips(text):
         })
     return trips
 
+SHIFT_REQUIRED = ("passnr", "forar", "start", "slut", "tid", "resor")
+TRIP_REQUIRED = ("kvittonr", "forar", "startdatum", "starttid", "startzon", "kredittyp", "belopp")
+
+
+def complete(rec, required):
+    """Komplett = alla obligatoriska fält finns. Bara ofullständiga poster skrivs över."""
+    return all(str(rec.get(k) or "").strip() for k in required)
+
+
 def main():
     if not PASSWORD:
         print("STIG_PASSWORD saknas")
@@ -134,8 +143,17 @@ def main():
         print(f"Parsade: {len(new_shifts)} skift, {len(new_trips)} körningar")
         
         added_s = added_t = 0
+        by_shift = {(x.get("passnr"), x.get("forar") or "710022"): x for x in data["shifts"]}
+        by_trip = {(x.get("kvittonr"), x.get("forar") or "710022"): x for x in data["trips"]}
+        fixed = 0
         for s in new_shifts:
             key = (s["passnr"], s["forar"])
+            if key in by_shift:
+                old = by_shift[key]
+                if not complete(old, SHIFT_REQUIRED):
+                    old.update({k: v for k, v in s.items() if str(v or "").strip()})
+                    fixed += 1
+                continue
             if key not in seen_shifts:
                 seen_shifts.add(key)
                 data["shifts"].append(s)
@@ -143,12 +161,18 @@ def main():
         
         for t in new_trips:
             key = (t["kvittonr"], t["forar"])
+            if key in by_trip:
+                old = by_trip[key]
+                if not complete(old, TRIP_REQUIRED):
+                    old.update({k: v for k, v in t.items() if str(v or "").strip()})
+                    fixed += 1
+                continue
             if key not in seen_trips:
                 seen_trips.add(key)
                 data["trips"].append(t)
                 added_t += 1
         
-        print(f"Tillagda: +{added_s} skift, +{added_t} körningar")
+        print(f"Tillagda: +{added_s} skift, +{added_t} körningar, {fixed} ofullständiga kompletterade")
         browser.close()
     
     data["last_updated"] = datetime.utcnow().isoformat() + "Z"
