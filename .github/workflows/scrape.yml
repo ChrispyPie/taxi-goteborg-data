@@ -17,9 +17,15 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: scrape-stig
+  cancel-in-progress: false
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    # Schemalagda körningar max 30 min; manuella (backfill) får 90 min
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 90 || 30 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,6 +50,8 @@ jobs:
         run: python scraper.py
 
       - name: Commit updated data
+        # Körs även om scrapern rapporterade fel, så att redan sparade resor inte går förlorade
+        if: ${{ !cancelled() }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -52,6 +60,7 @@ jobs:
           git push || true
 
       - name: Copy data to gh-pages
+        if: ${{ !cancelled() }}
         run: |
           git fetch origin gh-pages
           git checkout gh-pages
