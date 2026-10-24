@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-10-24T10:02:39.565997Z",
+  "last_updated": "2026-10-24T12:55:00.437448Z",
   "forar": "710022",
   "shifts": [
     {
@@ -40740,6 +40740,71 @@
       "belopp": "599,00",
       "starttid": "04:48",
       "sluttid": "05:09",
+      "startdatum": "2026-10-24"
+    },
+    {
+      "kvittonr": "000933-01",
+      "forar": "179890",
+      "startzon": "99",
+      "slutzon": "8",
+      "kilometer": "1,564",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "173,00",
+      "starttid": "11:48",
+      "sluttid": "11:53",
+      "startdatum": "2026-10-24"
+    },
+    {
+      "kvittonr": "000934-01",
+      "forar": "179890",
+      "startzon": "99",
+      "slutzon": "9",
+      "kilometer": "2,104",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "265,00",
+      "starttid": "12:02",
+      "sluttid": "12:15",
+      "startdatum": "2026-10-24"
+    },
+    {
+      "kvittonr": "000935-01",
+      "forar": "179890",
+      "startzon": "99",
+      "slutzon": "9",
+      "kilometer": "2,594",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "255,00",
+      "starttid": "13:38",
+      "sluttid": "13:53",
+      "startdatum": "2026-10-24"
+    },
+    {
+      "kvittonr": "030222-01",
+      "forar": "738104",
+      "startzon": "291",
+      "slutzon": "125",
+      "kilometer": "33,567",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "1045,00",
+      "starttid": "12:10",
+      "sluttid": "12:37",
+      "startdatum": "2026-10-24"
+    },
+    {
+      "kvittonr": "030223-01",
+      "forar": "738104",
+      "startzon": "117",
+      "slutzon": "298",
+      "kilometer": "38,733",
+      "dricks": "0,00",
+      "kredittyp": "160",
+      "belopp": "732,00",
+      "starttid": "13:45",
+      "sluttid": "14:17",
       "startdatum": "2026-10-24"
     }
   ]
