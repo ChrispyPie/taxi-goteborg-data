@@ -117,7 +117,7 @@
   </div>
 
   <script>
-    const APP_VERSION = '1.0.3';
+    const APP_VERSION = '1.0.4';
     console.log('Admin version:', APP_VERSION);
     const SUPABASE_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
@@ -322,11 +322,16 @@
       return Array.from(ids);
     }
 
+    // Aktiv = activated i databasen. Ingen automatisk avaktivering
+    // (tidigare blev alla "Inaktiv" när 24h-fristen i expiry hade passerat).
     function getDriverStatus(id) {
       const d = drivers[id];
-      if (!d || !d.activated) return 'inactive';
-      if (d.expiry && new Date(d.expiry) > new Date()) return 'active';
-      return 'inactive';
+      return (d && d.activated === true) ? 'active' : 'inactive';
+    }
+
+    // Giltig kategori, annars standard (t.ex. gamla 'normal' eller tom)
+    function normCategory(cat) {
+      return catOrder.includes(cat) ? cat : 'standard';
     }
 
     function renderBreadcrumb() {
@@ -598,18 +603,6 @@
           });
         }
       });
-      if (unknown.length > 0) {
-        html += `<div class="section-header">Övriga</div>`;
-        unknown.sort().forEach(id => {
-          const status = getDriverStatus(id);
-          const statusLabel = status === 'active' ? 'Aktiv' : 'Inaktiv';
-          const displayName = getDisplayName(id);
-          html += `<div class="row" onclick="editDriver('${id}')">
-            <span class="label">${displayName}</span>
-            <span class="status status-${status}">${statusLabel}</span>
-          </div>`;
-        });
-      }
       html += '</div>';
       content.innerHTML = html;
     }
@@ -672,7 +665,7 @@
       const grouped = {};
       const unknown = [];
       ids.forEach(id => {
-        const cat = drivers[id]?.category || 'standard';
+        const cat = normCategory(drivers[id]?.category);
         if (!catOrder.includes(cat)) {
           unknown.push(id);
         } else {
@@ -714,8 +707,10 @@
     function renderEditDriver(content) {
       const d = drivers[editingDriver] || {};
       const owner = isOwner();
-      const targetCat = d.category || 'standard';
+      const targetCat = normCategory(d.category);
       const canEdit = canEditCategory(targetCat);
+      const isActive = getDriverStatus(editingDriver) === 'active';
+      const canToggle = canToggleDriver(editingDriver);
       const personalDisabled = owner ? '' : 'disabled';
       const catDisabled = canEdit ? '' : 'disabled';
       const v = (val) => owner ? (val || '') : maskValue(val);
@@ -770,8 +765,7 @@
         
         ${owner || canEdit ? `<button onclick="saveDriver()" style="width:100%; margin-top:16px;">Spara</button>` : ''}
         <div style="margin-top:16px; display:flex; gap:8px;">
-          <button onclick="activateDriver('${editingDriver}')" style="flex:1;">Aktivera</button>
-          <button onclick="deactivateDriver('${editingDriver}')" style="flex:1;">Avaktivera</button>
+          ${canToggle ? `<button onclick="toggleActive('${editingDriver}')" style="flex:1;">${isActive ? 'Avaktivera' : 'Aktivera'}</button>` : ''}
           <button onclick="shareDriver('${editingDriver}')" style="flex:1;">Dela</button>
         </div>
       </div>`;
@@ -785,7 +779,7 @@
     async function saveDriver() {
       const d = drivers[editingDriver] || {};
       const owner = isOwner();
-      const canEdit = canEditCategory(d.category || 'standard');
+      const canEdit = canEditCategory(normCategory(d.category));
       if (!owner && !canEdit) return;
 
       const driverData = { id: editingDriver };
@@ -832,19 +826,59 @@
       return pw;
     }
 
+    // Endast admin, ägare och superadmin får aktivera/avaktivera,
+    // och bara chaufförer vars kategori de får ändra. Man kan inte avaktivera sig själv.
+    function canToggleDriver(id) {
+      if (!hasAdminAccess()) return false;
+      if (id === currentUserId) return false;
+      return canEditCategory(normCategory(drivers[id]?.category));
+    }
+
+    async function reloadDriver(id) {
+      const rows = await supabaseFetch('drivers?id=eq.' + encodeURIComponent(id) + '&select=*');
+      if (Array.isArray(rows) && rows[0]) drivers[id] = rows[0];
+      return drivers[id];
+    }
+
+    async function toggleActive(id) {
+      if (!canToggleDriver(id)) { alert('Du har inte behörighet att ändra den här chauffören.'); return; }
+      if (getDriverStatus(id) === 'active') {
+        await deactivateDriver(id);
+      } else {
+        await activateDriver(id);
+      }
+    }
+
     async function activateDriver(id) {
       const choice = prompt('Lösenord:\n1 = Autogenerera\nEller skriv eget lösenord:');
       if (choice === null) return;
-      const pw = (choice === '1' || choice === '') ? generatePassword() : choice;
+      const typed = choice.trim();
+      const pw = (typed === '1' || typed === '') ? generatePassword() : typed;
+
+      // Kategori: det som valts i listan, annars Standard
+      const stored = drivers[id]?.category;
+      const sel = document.getElementById('f-category');
+      let cat = (sel && !sel.disabled) ? sel.value : normCategory(stored);
+      if (!catOrder.includes(cat)) cat = 'standard';
+      // Avslutad kan inte logga in – om ingen annan kategori valts blir det Standard
+      if (cat === 'avslutad' && (!sel || sel.value === normCategory(stored))) cat = 'standard';
+      if (!canEditCategory(cat)) cat = 'standard';
+
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       try {
         await supabaseFetch('drivers', {
           method: 'POST',
-          body: JSON.stringify({ id, password: pw, expiry, activated: true, logged_in: false }),
+          body: JSON.stringify({ id, password: pw, expiry, activated: true, logged_in: false, category: cat }),
           headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
         });
-        drivers[id] = { ...drivers[id], id, password: pw, expiry, activated: true };
-        alert('Aktiverad!\nLösenord: ' + pw);
+        // Kontrollera att lösenordet verkligen sparades
+        const saved = await reloadDriver(id);
+        if (!saved || saved.password !== pw || saved.activated !== true) {
+          alert('Fel: aktiveringen sparades inte korrekt. Försök igen.');
+          render();
+          return;
+        }
+        alert('Aktiverad som ' + (userCategories[cat] || cat) + '!\nLösenord: ' + pw);
         render();
       } catch (e) {
         alert('Fel: ' + e.message);
@@ -853,12 +887,12 @@
 
     function shareDriver(id) {
       const d = drivers[id];
-      if (!d || !d.password) {
+      if (!d || !d.password || d.activated !== true) {
         alert('Ingen aktivering att dela');
         return;
       }
       const link = 'https://chrispypie.github.io/taxi-goteborg-data/';
-      const msg = 'TaxiData\n\nLänk: ' + link + '\nFörar-ID: ' + id + '\nLösenord: ' + d.password + '\n\nLogga in inom 24 timmar.';
+      const msg = 'TaxiData\n\nLänk: ' + link + '\nFörar-ID: ' + id + '\nLösenord: ' + d.password;
       if (navigator.share) {
         navigator.share({ title: 'TaxiData', text: msg }).catch(() => {});
       } else {
@@ -869,12 +903,11 @@
     async function deactivateDriver(id) {
       if (!confirm('Avaktivera ' + id + '?')) return;
       try {
-        await supabaseFetch('drivers', {
-          method: 'POST',
-          body: JSON.stringify({ id, activated: false }),
-          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
+        await supabaseFetch('drivers?id=eq.' + encodeURIComponent(id), {
+          method: 'PATCH',
+          body: JSON.stringify({ activated: false })
         });
-        if (drivers[id]) drivers[id].activated = false;
+        await reloadDriver(id);
         render();
       } catch (e) {
         alert('Fel: ' + e.message);
