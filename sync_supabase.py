@@ -69,24 +69,26 @@ def send_status(path, failed):
 
 
 def dedupe_trips(doc):
-    """Spärr mot dubbletter: samma (kvittonr, förare) med identiska fält skickas bara en gång.
-    Rader som delar kvitto men skiljer sig behålls (och varnas för)."""
-    seen, out, dropped, differ = {}, [], 0, 0
+    """Spärr mot dubbletter (nyckel taxi + förare + kvittonr + startdatum, se tripkey.py):
+    en rad som är EXAKT lika en tidigare rad med samma nyckel skickas inte. Rader som delar nyckel
+    men skiljer sig behålls (och varnas för)."""
+    from tripkey import norm, same_trip
+    groups, out, dropped, differ = {}, [], 0, 0
     for t in doc.get('trips', []):
-        if not t.get('forar'):
-            t['forar'] = '710022'
-        key = (t.get('kvittonr'), t.get('forar'))
-        if key in seen:
-            if seen[key] == t:
-                dropped += 1
-                continue
+        norm(t)
+        g = groups.setdefault(str(t.get('kvittonr') or ''), [])
+        twins = [o for o in g if same_trip(o, t)]
+        if any({k: v for k, v in o.items() if k != 'taxi'} == {k: v for k, v in t.items() if k != 'taxi'}
+               and (not o.get('taxi') or not t.get('taxi') or o['taxi'] == t['taxi']) for o in twins):
+            dropped += 1
+            continue
+        if twins:
             differ += 1
-        else:
-            seen[key] = t
+        g.append(t)
         out.append(t)
     doc['trips'] = out
     if dropped or differ:
-        print(f'Dubblettspärr: {dropped} identiska borttagna, {differ} med samma kvitto men olika fält behållna')
+        print(f'Dubblettspärr: {dropped} identiska borttagna, {differ} med samma nyckel men olika fält behållna')
     return doc
 
 

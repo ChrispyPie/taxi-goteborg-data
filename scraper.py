@@ -18,6 +18,7 @@ import json
 import re
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
+from tripkey import TripIndex
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 # Status för varje körning skrivs till scrape_status.json (committas inte).
@@ -290,18 +291,19 @@ def scrape_driver(page, forar_id, existing, start_date, end_date):
         date_str = current.strftime("%Y-%m-%d")
         receipts = scrape_day(page, forar_id, date_str)
         for kvitto in receipts:
-            key = (kvitto, forar_id)
-            if key in existing:
+            key = (kvitto, forar_id, date_str)
+            found = existing.find(kvitto, forar_id, date_str)
+            if found is not None:
                 # Komplett post: hoppa över (sparar anrop). Ofullständig: hämta om, högst en gång per körning.
-                if trip_complete(existing[key]) or key in REFETCHED:
+                if trip_complete(found) or key in REFETCHED:
                     continue
                 REFETCHED.add(key)
                 detail = scrape_trip_detail(page, kvitto)
-                merge_fields(existing[key], {"kvittonr": kvitto, "forar": forar_id, **detail})
+                merge_fields(found, {"kvittonr": kvitto, "forar": forar_id, **detail})
                 print(f"    Kompletterad: {kvitto}")
                 continue
             detail = scrape_trip_detail(page, kvitto)
-            existing[key] = {"kvittonr": kvitto, "forar": forar_id, **detail}
+            existing.add({"kvittonr": kvitto, "forar": forar_id, **detail})
             new_count += 1
             print(f"    Ny: {kvitto}")
         current += timedelta(days=1)
@@ -320,11 +322,8 @@ def main():
         data = {"trips": [], "shifts": []}
 
     # Äldre testposter saknar ibland "forar"; de gäller 710022 (samma regel som i Supabase-importen)
-    existing = {}
-    for t in data.get("trips", []):
-        if not t.get("forar"):
-            t["forar"] = "710022"
-        existing[(t.get("kvittonr"), t.get("forar"))] = t
+    trips_list = data.get("trips", [])
+    existing = TripIndex(trips_list)   # nyckel: taxi + förare + kvittonr + startdatum (se tripkey.py)
 
     seen = set()
     all_shifts = []
@@ -393,7 +392,7 @@ def main():
             print(f"  {new_count} nya kvitton")
 
         # Spara resorna direkt, innan passteget, så att de aldrig går förlorade
-        data["trips"] = list(existing.values())
+        data["trips"] = existing.all()
         data["shifts"] = all_shifts
         save_data(data)
         print(f"Sparade {len(data['trips'])} resor ({total_new} nya)")

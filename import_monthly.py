@@ -7,6 +7,7 @@ import os
 import json
 from datetime import datetime
 from playwright.sync_api import sync_playwright
+from tripkey import TripIndex, clearly_same
 
 STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
@@ -31,28 +32,26 @@ def download_monthly(page, year_month):
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1500)
     
-    pass_data = page.evaluate("""
-        async () => {
-            const form = document.querySelector('form');
-            const fd = new FormData(form);
-            fd.set('__EVENTTARGET', 'ctl00$MainContent$gv_FileList');
-            fd.set('__EVENTARGUMENT', 'Select$2');
-            const resp = await fetch('/MedlemsRapporter.aspx', { method: 'POST', body: fd });
-            return await resp.text();
-        }
-    """)
-    
-    trip_data = page.evaluate("""
-        async () => {
-            const form = document.querySelector('form');
-            const fd = new FormData(form);
-            fd.set('__EVENTTARGET', 'ctl00$MainContent$gv_FileList');
-            fd.set('__EVENTARGUMENT', 'Select$3');
-            const resp = await fetch('/MedlemsRapporter.aspx', { method: 'POST', body: fd });
-            return await resp.text();
-        }
-    """)
-    
+    # Välj filerna på NAMN (pass{ÅÅÅÅMM}Medl… / resapost{ÅÅÅÅMM}Medl…), aldrig på position:
+    # sökrutan filtrerar inte, listan visar alltid alla filer med nyaste först.
+    names = page.evaluate("""() => Array.from(document.querySelectorAll('#MainContent_gv_FileList tr'))
+        .slice(1).map(r => (r.querySelector('td') || {}).innerText || '')""")
+    ym = year_month.replace("-", "")
+    def idx(prefix):
+        hits = [i for i, n in enumerate(names) if n.strip().startswith(f"{prefix}{ym}Medl")]
+        if len(hits) != 1:
+            raise SystemExit(f"Hittade {len(hits)} filer för {prefix}{ym}")
+        return hits[0]
+    dl = """async (arg) => { const form = document.querySelector('form'); const fd = new FormData(form);
+        fd.set('__EVENTTARGET', 'ctl00$MainContent$gv_FileList'); fd.set('__EVENTARGUMENT', 'Select$' + arg);
+        const resp = await fetch('/MedlemsRapporter.aspx', { method: 'POST', body: fd }); return await resp.text(); }"""
+    pass_data = page.evaluate(dl, idx("pass"))
+    trip_data = page.evaluate(dl, idx("resapost"))
+    for kind, txt, col in (("pass", pass_data, 3), ("resa", trip_data, 1)):
+        rows = [l.split(';') for l in txt.replace('\r', '').split('\n')[1:] if l.strip()]
+        share = sum(r[col][:6] == ym for r in rows if len(r) > col) / max(1, len(rows))
+        if rows and share < 0.8:
+            raise SystemExit(f"{kind}-filen gäller inte {year_month}")
     return pass_data, trip_data
 
 def parse_shifts(text):
@@ -89,7 +88,7 @@ def parse_trips(text):
         if len(dat) < 8:
             continue
         trips.append({
-            "kvittonr": p[0], "forar": p[5],
+            "kvittonr": p[0], "forar": p[5], "taxi": p[7],
             "startzon": p[19], "slutzon": p[20],
             "kilometer": f"{float(p[17])/10:.1f}".replace('.', ','),
             "dricks": f"{float(p[14] or 0):.2f}".replace('.', ','),
@@ -124,7 +123,6 @@ def main():
         data = {"shifts": [], "trips": []}
     
     seen_shifts = {(s.get("passnr"), s.get("forar") or "710022") for s in data.get("shifts", [])}
-    seen_trips = {(t.get("kvittonr"), t.get("forar") or "710022") for t in data.get("trips", [])}
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -144,7 +142,7 @@ def main():
         
         added_s = added_t = 0
         by_shift = {(x.get("passnr"), x.get("forar") or "710022"): x for x in data["shifts"]}
-        by_trip = {(x.get("kvittonr"), x.get("forar") or "710022"): x for x in data["trips"]}
+        trip_index = TripIndex(data["trips"])   # nyckel: taxi + förare + kvittonr + startdatum (tripkey.py)
         fixed = 0
         for s in new_shifts:
             key = (s["passnr"], s["forar"])
@@ -160,18 +158,18 @@ def main():
                 added_s += 1
         
         for t in new_trips:
-            key = (t["kvittonr"], t["forar"])
-            if key in by_trip:
-                old = by_trip[key]
+            old = trip_index.find(t["kvittonr"], t["forar"], t["startdatum"], t.get("taxi"))
+            if old is not None:
+                if not old.get("taxi") and clearly_same(old, t):
+                    old["taxi"] = t["taxi"]
                 if not complete(old, TRIP_REQUIRED):
-                    old.update({k: v for k, v in t.items() if str(v or "").strip()})
+                    old.update({k: v for k, v in t.items() if str(v or "").strip() and not str(old.get(k) or "").strip()})
                     fixed += 1
                 continue
-            if key not in seen_trips:
-                seen_trips.add(key)
-                data["trips"].append(t)
-                added_t += 1
-        
+            trip_index.add(t)
+            data["trips"].append(t)
+            added_t += 1
+
         print(f"Tillagda: +{added_s} skift, +{added_t} körningar, {fixed} ofullständiga kompletterade")
         browser.close()
     

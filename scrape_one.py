@@ -9,6 +9,7 @@ import sys
 import json
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
+from tripkey import TripIndex
 
 STIG_URL = "https://stig.taxinet.se"
 USERNAME = os.environ.get("STIG_USERNAME", "15201")
@@ -127,11 +128,7 @@ def main():
 
     # Nyckel = (kvittonr, förare). Kvittonummer är per bil, så samma nummer finns hos flera förare.
     # Äldre testposter utan "forar" gäller 710022 (annars blir de dubbletter).
-    existing = {}
-    for t in data.get("trips", []):
-        if not t.get("forar"):
-            t["forar"] = "710022"
-        existing[(t.get("kvittonr"), t.get("forar"))] = t
+    existing = TripIndex(data.get("trips", []))   # nyckel: se tripkey.py
 
     seen = set()
     all_shifts = list(data.get("shifts", []))
@@ -159,10 +156,10 @@ def main():
             date_str = current.strftime("%Y-%m-%d")
             receipts = scrape_day(page, forar_id, date_str)
             for kvitto in receipts:
-                if (kvitto, forar_id) in existing:
+                if existing.find(kvitto, forar_id, date_str) is not None:
                     continue
                 detail = scrape_trip_detail(page, kvitto)
-                existing[(kvitto, forar_id)] = {"kvittonr": kvitto, "forar": forar_id, **detail}
+                existing.add({"kvittonr": kvitto, "forar": forar_id, **detail})
                 new_count += 1
                 print(f"  Ny: {kvitto}")
             current += timedelta(days=1)
@@ -176,7 +173,7 @@ def main():
                 all_shifts.append(s)
                 added += 1
 
-        data["trips"] = list(existing.values())
+        data["trips"] = existing.all()
         data["shifts"] = all_shifts
         data["last_updated"] = datetime.utcnow().isoformat() + "Z"
 
