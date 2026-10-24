@@ -91,49 +91,51 @@
     var SB_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
     var SB_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
 
+    // Anropar en server-funktion (RPC) i Supabase. Lösenord kontrolleras på servern.
+    async function rpc(name, args) {
+      var res = await fetch(SB_URL + '/rest/v1/rpc/' + name, {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(args || {})
+      });
+      var text = await res.text();
+      var body = text ? JSON.parse(text) : null;
+      if (!res.ok) { var err = new Error((body && body.message) || ('HTTP ' + res.status)); err.code = body && body.code; throw err; }
+      return body;
+    }
+
+    function clearSession() {
+      localStorage.removeItem('taxi_session');
+      localStorage.removeItem('taxi_logged_in');
+      localStorage.removeItem('taxi_driver');
+      localStorage.removeItem('taxi_view');
+    }
+
     function showLoginError(msg) {
       var el = document.getElementById('login-error');
       el.textContent = msg;
       el.style.display = 'block';
     }
 
-    function loginAs(id) {
-      localStorage.setItem('taxi_logged_in', '1');
-      localStorage.setItem('taxi_driver', id);
-      location.reload();
-    }
-
-    // Jämför lösenord: mellanslag runt om ignoreras, och stor/liten bokstav spelar
-    // ingen roll (mobilen gör ofta första bokstaven stor automatiskt).
-    function passwordMatches(saved, typed) {
-      if (!saved || !typed) return false;
-      return String(saved).trim().toLowerCase() === String(typed).trim().toLowerCase();
-    }
+    var loginErrors = {
+      wrong: 'Fel förar-ID eller lösenord',
+      inactive: 'Kontot är inte aktiverat. Kontakta din åkare.',
+      ended: 'Kontot är avslutat. Kontakta din åkare.',
+      locked: 'För många felaktiga försök. Vänta 15 minuter och försök igen.',
+      bad_id: 'Ogiltigt förar-ID'
+    };
 
     async function checkPassword() {
       var id = document.getElementById('driver-id').value.trim();
       var pw = document.getElementById('password').value;
-      // Gemensamt huvudlösenord – fungerar som förut tills vidare
-      if (pw === 'taxi2026') {
-        loginAs(id);
-        return;
-      }
       if (!id || !pw) { showLoginError('Fyll i förar-ID och lösenord'); return; }
       try {
-        var res = await fetch(SB_URL + '/rest/v1/drivers?id=eq.' + encodeURIComponent(id) + '&select=id,password,activated,category', {
-          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        var rows = await res.json();
-        var d = rows && rows[0];
-        if (!d || !passwordMatches(d.password, pw)) { showLoginError('Fel förar-ID eller lösenord'); return; }
-        if (d.activated !== true) { showLoginError('Kontot är inte aktiverat. Kontakta din åkare.'); return; }
-        if (d.category === 'avslutad') { showLoginError('Kontot är avslutat. Kontakta din åkare.'); return; }
-        fetch(SB_URL + '/rest/v1/drivers?id=eq.' + encodeURIComponent(id), {
-          method: 'PATCH',
-          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ logged_in: true })
-        }).catch(function () {}).finally(function () { loginAs(id); });
+        var r = await rpc('login', { p_id: id, p_password: pw });
+        if (!r || !r.ok) { showLoginError(loginErrors[r && r.error] || 'Inloggningen misslyckades'); return; }
+        localStorage.setItem('taxi_session', r.token);
+        localStorage.setItem('taxi_logged_in', '1');
+        localStorage.setItem('taxi_driver', r.driver.id);
+        location.reload();
       } catch (e) {
         showLoginError('Kunde inte kontrollera lösenordet. Försök igen.');
       }
@@ -141,20 +143,18 @@
 
     async function loadDriverData() {
       try {
-        var res = await fetch('https://lpfdryvukqmjlgenuzpb.supabase.co/rest/v1/drivers?id=eq.' + driverId + '&select=*', {
-          headers: {
-            'apikey': 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP',
-            'Authorization': 'Bearer sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP'
-          }
-        });
-        var rows = await res.json();
-        if (rows && rows[0]) driverData = rows[0];
-      } catch (e) {}
+        var me = await rpc('get_me', { p_token: localStorage.getItem('taxi_session') || '' });
+        if (me) driverData = me;
+        return true;
+      } catch (e) {
+        if (e.code === '28000') { clearSession(); location.reload(); return false; }
+        return true;
+      }
     }
 
     async function showMenu() {
       driverId = localStorage.getItem('taxi_driver') || 'okänd';
-      await loadDriverData();
+      if (!(await loadDriverData())) return;
       document.getElementById('login-screen').style.display = 'none';
       
       var savedView = localStorage.getItem('taxi_view');
@@ -170,10 +170,9 @@
       }
     }
 
-    function logout() {
-      localStorage.removeItem('taxi_logged_in');
-      localStorage.removeItem('taxi_driver');
-      localStorage.removeItem('taxi_view');
+    async function logout() {
+      try { await rpc('logout', { p_token: localStorage.getItem('taxi_session') || '' }); } catch (e) {}
+      clearSession();
       location.reload();
     }
 
@@ -240,8 +239,11 @@
       }
     });
 
-    if (localStorage.getItem('taxi_logged_in') === '1') {
+    if (localStorage.getItem('taxi_session')) {
       showMenu();
+    } else if (localStorage.getItem('taxi_logged_in')) {
+      // Gammal inloggning utan session – logga in på nytt
+      clearSession();
     }
   </script>
 </body>

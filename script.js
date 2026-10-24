@@ -1,4 +1,3 @@
-const MASTER_PASSWORD = 'taxi2026';
 let data = {};
 let currentView = 'day';
 let currentDate = new Date();
@@ -52,31 +51,7 @@ function showApp() {
   loadData().then(render);
 }
 
-function checkPassword() {
-  const driverId = document.getElementById('driver-id').value.trim();
-  const password = document.getElementById('password').value;
-  if (driverId && password === MASTER_PASSWORD) {
-    currentDriver = driverId;
-    localStorage.setItem('taxi_logged_in', '1');
-    localStorage.setItem('taxi_driver', driverId);
-    showApp();
-  } else {
-    document.getElementById('login-error').style.display = 'block';
-  }
-}
-
-function logout() {
-  localStorage.removeItem('taxi_logged_in');
-  localStorage.removeItem('taxi_driver');
-  currentDriver = '';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('driver-id').value = '';
-  document.getElementById('password').value = '';
-  document.getElementById('login-error').style.display = 'none';
-}
-
-if (localStorage.getItem('taxi_logged_in') === '1' && currentDriver) showApp();
+// Inloggning och utloggning sköts i index.html via server-funktioner (RPC).
 
 document.getElementById('password').addEventListener('keypress', e => {
   if (e.key === 'Enter') checkPassword();

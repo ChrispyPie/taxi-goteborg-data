@@ -117,7 +117,7 @@
   </div>
 
   <script>
-    const APP_VERSION = '1.0.4';
+    const APP_VERSION = '1.0.5';
     console.log('Admin version:', APP_VERSION);
     const SUPABASE_URL = 'https://lpfdryvukqmjlgenuzpb.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_7LwIOZ5ygRvJqJKFxl4cNQ_LvrzrHrP';
@@ -155,6 +155,9 @@
     let expandedDrivers = {};
     let expandedCategories = {};
     let expandedTrips = {};
+    let showLog = false;
+    let logEntries = null;
+    const lastPasswords = {};
 
     function getMyCategory() {
       const me = drivers[currentUserId];
@@ -231,22 +234,42 @@
       });
     }
 
-    async function supabaseFetch(path, options = {}) {
-      const headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      };
-      if (options.headers) Object.assign(headers, options.headers);
-      const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-        method: options.method || 'GET',
-        headers,
-        body: options.body
+    // Alla läsningar/ändringar av förare går via server-funktioner (RPC)
+    // som kontrollerar inloggningen och behörigheten på servern.
+    function getToken() { return localStorage.getItem('taxi_session') || ''; }
+
+    async function rpc(name, args = {}) {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_token: getToken(), ...args })
       });
-      if (!res.ok) throw new Error(await res.text());
       const text = await res.text();
-      return text ? JSON.parse(text) : {};
+      const body = text ? JSON.parse(text) : null;
+      if (!res.ok) {
+        const err = new Error((body && body.message) || ('HTTP ' + res.status));
+        err.code = body && body.code;
+        if (err.code === '28000') {
+          ['taxi_session', 'taxi_logged_in', 'taxi_driver', 'taxi_view'].forEach(k => localStorage.removeItem(k));
+          location.href = 'index.html';
+        }
+        throw err;
+      }
+      return body;
+    }
+
+    const errorTexts = {
+      forbidden: 'Du har inte behörighet att göra det.',
+      forbidden_self: 'Du kan inte ändra din egen aktivering.',
+      password_too_short: 'Lösenordet måste vara minst 4 tecken.',
+      bad_id: 'Ogiltigt förar-ID.'
+    };
+    function errText(e) { return errorTexts[e.message] || ('Fel: ' + e.message); }
+
+    async function reloadDrivers() {
+      const rows = await rpc('admin_list_drivers');
+      drivers = {};
+      if (Array.isArray(rows)) rows.forEach(r => { drivers[r.id] = r; });
     }
 
     async function loadData() {
@@ -258,13 +281,16 @@
       await Promise.all(monthsToLoad.map(loadMonth));
       mergeLoadedData();
 
+      if (!getToken()) {
+        location.href = 'index.html';
+        return;
+      }
+      let denied = false;
       try {
-        const rows = await supabaseFetch('drivers?select=*');
-        drivers = {};
-        if (Array.isArray(rows)) rows.forEach(r => { drivers[r.id] = r; });
-      } catch (e) { console.error(e); }
+        await reloadDrivers();
+      } catch (e) { console.error(e); denied = true; }
 
-      if (!hasAdminAccess()) {
+      if (denied || !hasAdminAccess()) {
         document.getElementById('access-denied').style.display = 'block';
         document.getElementById('admin-app').style.display = 'none';
         return;
@@ -469,7 +495,10 @@
         title.textContent = 'Åkeridata';
         renderAkeridata(content);
       } else if (path[0].id === 'chaufforer') {
-        if (editingDriver) {
+        if (showLog) {
+          title.textContent = 'Logg';
+          renderLog(content);
+        } else if (editingDriver) {
           title.textContent = 'Redigera';
           renderEditDriver(content);
         } else {
@@ -674,7 +703,8 @@
         }
       });
 
-      let html = '<div class="section">';
+      let html = '<div style="text-align:right; padding:4px 16px 8px;"><a href="#" onclick="openLog();return false;" style="font-size:13px; color:#3182ce;">Logg</a></div>';
+      html += '<div class="section">';
       catOrder.forEach(cat => {
         if (!grouped[cat] || grouped[cat].length === 0) return;
         html += `<div class="section-header">${userCategories[cat]}</div>`;
@@ -804,26 +834,16 @@
         driverData.category = document.getElementById('f-category').value;
       }
 
+      const { id: _ignored, ...fields } = driverData;
       try {
-        await supabaseFetch('drivers', {
-          method: 'POST',
-          body: JSON.stringify(driverData),
-          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
-        });
-        drivers[editingDriver] = { ...drivers[editingDriver], ...driverData };
+        await rpc('admin_save_driver', { p_id: editingDriver, p_data: fields });
+        await reloadDrivers();
         alert('Sparat!');
         editingDriver = null;
         render();
       } catch (e) {
-        alert('Fel: ' + e.message);
+        alert(errText(e));
       }
-    }
-
-    function generatePassword() {
-      const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-      let pw = '';
-      for (let i = 0; i < 6; i++) pw += chars[Math.floor(Math.random() * chars.length)];
-      return pw;
     }
 
     // Endast admin, ägare och superadmin får aktivera/avaktivera,
@@ -832,12 +852,6 @@
       if (!hasAdminAccess()) return false;
       if (id === currentUserId) return false;
       return canEditCategory(normCategory(drivers[id]?.category));
-    }
-
-    async function reloadDriver(id) {
-      const rows = await supabaseFetch('drivers?id=eq.' + encodeURIComponent(id) + '&select=*');
-      if (Array.isArray(rows) && rows[0]) drivers[id] = rows[0];
-      return drivers[id];
     }
 
     async function toggleActive(id) {
@@ -853,7 +867,6 @@
       const choice = prompt('Lösenord:\n1 = Autogenerera\nEller skriv eget lösenord:');
       if (choice === null) return;
       const typed = choice.trim();
-      const pw = (typed === '1' || typed === '') ? generatePassword() : typed;
 
       // Kategori: det som valts i listan, annars Standard
       const stored = drivers[id]?.category;
@@ -864,35 +877,34 @@
       if (cat === 'avslutad' && (!sel || sel.value === normCategory(stored))) cat = 'standard';
       if (!canEditCategory(cat)) cat = 'standard';
 
-      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       try {
-        await supabaseFetch('drivers', {
-          method: 'POST',
-          body: JSON.stringify({ id, password: pw, expiry, activated: true, logged_in: false, category: cat }),
-          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' }
+        // Servern skapar lösenordet, sparar bara en hash och kontrollerar att det fungerar
+        const r = await rpc('admin_activate', {
+          p_id: id, p_category: cat,
+          p_password: (typed === '1' || typed === '') ? null : typed
         });
-        // Kontrollera att lösenordet verkligen sparades
-        const saved = await reloadDriver(id);
-        if (!saved || saved.password !== pw || saved.activated !== true) {
+        if (!r || !r.ok || !r.verified) {
           alert('Fel: aktiveringen sparades inte korrekt. Försök igen.');
-          render();
           return;
         }
-        alert('Aktiverad som ' + (userCategories[cat] || cat) + '!\nLösenord: ' + pw);
+        lastPasswords[id] = r.password;
+        await reloadDrivers();
+        alert('Aktiverad som ' + (userCategories[r.category] || r.category) + '!\nLösenord: ' + r.password +
+              '\n\nSpara eller dela lösenordet nu – det visas bara en gång.');
         render();
       } catch (e) {
-        alert('Fel: ' + e.message);
+        alert(errText(e));
       }
     }
 
     function shareDriver(id) {
-      const d = drivers[id];
-      if (!d || !d.password || d.activated !== true) {
-        alert('Ingen aktivering att dela');
+      const pw = lastPasswords[id];
+      if (!pw) {
+        alert('Lösenordet visas bara direkt efter aktivering.\nAvaktivera och aktivera igen för att få ett nytt lösenord att dela.');
         return;
       }
       const link = 'https://chrispypie.github.io/taxi-goteborg-data/';
-      const msg = 'TaxiData\n\nLänk: ' + link + '\nFörar-ID: ' + id + '\nLösenord: ' + d.password;
+      const msg = 'TaxiData\n\nLänk: ' + link + '\nFörar-ID: ' + id + '\nLösenord: ' + pw;
       if (navigator.share) {
         navigator.share({ title: 'TaxiData', text: msg }).catch(() => {});
       } else {
@@ -903,21 +915,74 @@
     async function deactivateDriver(id) {
       if (!confirm('Avaktivera ' + id + '?')) return;
       try {
-        await supabaseFetch('drivers?id=eq.' + encodeURIComponent(id), {
-          method: 'PATCH',
-          body: JSON.stringify({ activated: false })
-        });
-        await reloadDriver(id);
+        await rpc('admin_deactivate', { p_id: id });
+        delete lastPasswords[id];
+        await reloadDrivers();
         render();
       } catch (e) {
-        alert('Fel: ' + e.message);
+        alert(errText(e));
       }
+    }
+
+    // ---- Aktivitetslogg ----
+    const logRoleLabels = { superadmin: 'S admin', agare: 'Ägare', admin: 'Admin', standard: 'Standard', semester: 'Semester', avslutad: 'Avslutad' };
+    const failReasons = { wrong_password: 'fel lösenord', inactive: 'kontot inaktivt', ended: 'kontot avslutat' };
+
+    function esc(x) {
+      return String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function catName(c) { return (logRoleLabels[c] || c || '').toLowerCase(); }
+
+    function describeLog(e) {
+      const who = (logRoleLabels[e.actor_role] || 'Förare') + ' ' + (e.actor_id || '?');
+      const d = e.details || {};
+      switch (e.action) {
+        case 'login': return who + ' loggade in' + (e.via_master ? ' (med huvudlösenordet)' : '');
+        case 'login_failed': return 'Misslyckad inloggning för ' + (e.target_id || '?') + (failReasons[d.reason] ? ' (' + failReasons[d.reason] + ')' : '');
+        case 'activate': return who + ' aktiverade ' + e.target_id + (d.category ? ' som ' + catName(d.category) : '');
+        case 'deactivate': return who + ' avaktiverade ' + e.target_id;
+        case 'category_change': return who + ' ändrade kategori på ' + e.target_id + ' till ' + catName(d.to);
+        default: return who + ': ' + e.action + ' ' + (e.target_id || '');
+      }
+    }
+
+    function formatLogTime(t) {
+      return new Date(t).toLocaleString('sv-SE', { timeZone: 'Europe/Stockholm', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function openLog() {
+      showLog = true;
+      logEntries = null;
+      render();
+      try {
+        logEntries = await rpc('admin_get_log', { p_limit: 300 });
+      } catch (e) {
+        logEntries = [];
+        alert(errText(e));
+      }
+      render();
+    }
+
+    function renderLog(content) {
+      if (logEntries === null) { content.innerHTML = '<div class="section"><p style="padding:16px;">Laddar...</p></div>'; return; }
+      let html = '<div class="section">';
+      if (!logEntries.length) html += '<p style="padding:16px;">Ingen aktivitet ännu.</p>';
+      logEntries.forEach(e => {
+        html += `<div class="row" style="flex-direction:column; align-items:flex-start; gap:2px;">
+          <span style="font-size:12px; color:#718096;">${esc(formatLogTime(e.time))}</span>
+          <span class="label">${esc(describeLog(e))}</span>
+        </div>`;
+      });
+      html += '</div>';
+      content.innerHTML = html;
     }
 
     function openMenu(id) {
       const item = menu.find(m => m.id === id);
       path = [{ id, label: item.label }];
       editingDriver = null;
+      showLog = false;
       selectedDay = null;
       selectedCar = null;
       render();
@@ -928,6 +993,8 @@
         selectedCar = null;
       } else if (selectedDay) {
         selectedDay = null;
+      } else if (showLog) {
+        showLog = false;
       } else if (editingDriver) {
         editingDriver = null;
       } else {
@@ -940,9 +1007,9 @@
       const menu = document.getElementById('profile-menu');
       menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
     }
-    function logout() {
-      localStorage.removeItem('driver_id');
-      localStorage.removeItem('driver_password');
+    async function logout() {
+      try { await rpc('logout'); } catch (e) {}
+      ['taxi_session', 'taxi_logged_in', 'taxi_driver', 'taxi_view'].forEach(k => localStorage.removeItem(k));
       location.href = 'index.html';
     }
     function goHome() {
@@ -952,6 +1019,7 @@
     function goTo(index) {
       path = path.slice(0, index + 1);
       editingDriver = null;
+      showLog = false;
       selectedDay = null;
       selectedCar = null;
       render();
